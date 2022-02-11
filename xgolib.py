@@ -1,15 +1,22 @@
 import serial
+import struct
 import time
-__version__ = '1.1.5'
-VERSION = __version__
+
+__version__ = '1.1.8'
+__last_modified__ = '2022/1/5'
 
 """
 XGOorder 用来存放命令地址和对应数据
 XGOorder is used to store the command address and corresponding data
 """
 XGOorder = {
-    "BATTERY": [0x01,100],
+    "BATTERY": [0x01, 100],
     "PERFORM": [0x03, 0],
+    "CALIBRATION": [0x04, 0],
+    "UPGRADE": [0x05, 0],
+    "MOVE_TEST": [0x06, 1],
+    "VERSION": [0x07],
+    "BT_NAME": [0x13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     "UNLOAD_MOTOR": [0x20, 0],
     "LOAD_MOTOR": [0x20, 0],
     "VX": [0x30, 128],
@@ -25,7 +32,10 @@ XGOorder = {
     "MOTOR_ANGLE": [0x50, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128],
     "MOTOR_SPEED": [0x5C, 1],
     "LEG_POS": [0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "IMU": [0x61, 0]
+    "IMU": [0x61, 0],
+    "ROLL": [0x62, 0],
+    "PITCH": [0x63, 0],
+    "YAW": [0x64, 0]
 }
 
 """
@@ -42,14 +52,14 @@ XGOparam = {
     "MARK_TIME_LIMIT": [10, 35],
     "VX_LIMIT": 25,
     "VY_LIMIT": 18,
-    "VYAW_LIMIT": 150
+    "VYAW_LIMIT": 100
 }
 
 
 def search(data, list):
     for i in range(len(list)):
         if data == list[i]:
-            return i+1
+            return i + 1
     return -1
 
 
@@ -81,13 +91,53 @@ def conver2u8(data, limit, mode=0):
         else:
             return int(255 / (limitmax - limitmin) * (data - limitmin))
 
-def conver2float(data,limit):
+
+def conver2float(data, limit):
     if not isinstance(limit, list):
-        return (data-128.0)/255.0 * limit
+        return (data - 128.0) / 255.0 * limit
     else:
         limitmin = limit[0]
         limitmax = limit[1]
-        return data/255.0 * (limitmax-limitmin)+ limitmin
+        return data / 255.0 * (limitmax - limitmin) + limitmin
+
+
+def Byte2Float(rawdata):
+    a = bytearray()
+    a.append(rawdata[3])
+    a.append(rawdata[2])
+    a.append(rawdata[1])
+    a.append(rawdata[0])
+    return struct.unpack("!f", a)[0]
+    pass
+
+
+def changePara(version):
+    global XGOparam
+    if version == 'xgomini':
+        XGOparam = {
+            "TRANSLATION_LIMIT": [35, 18, [75, 115]],
+            "ATTITUDE_LIMIT": [20, 15, 11],
+            "LEG_LIMIT": [35, 18, [75, 115]],
+            "MOTOR_LIMIT": [[-65, 73], [-66, 93], [-31, 31]],
+            "PERIOD_LIMIT": [[1.5, 8]],
+            "MARK_TIME_LIMIT": [10, 35],
+            "VX_LIMIT": 25,
+            "VY_LIMIT": 18,
+            "VYAW_LIMIT": 100
+        }
+    elif version == 'xgolite':
+        XGOparam = {
+            "TRANSLATION_LIMIT": [25, 15, [60, 110]],
+            "ATTITUDE_LIMIT": [20, 10, 12],
+            "LEG_LIMIT": [25, 15, [60, 110]],
+            "MOTOR_LIMIT": [[-85, 50], [-70, 90], [-30, 30]],
+            "PERIOD_LIMIT": [[1.5, 8]],
+            "MARK_TIME_LIMIT": [10, 25],
+            "VX_LIMIT": 25,
+            "VY_LIMIT": 15,
+            "VYAW_LIMIT": 100
+        }
+
 
 class XGO():
     """
@@ -95,35 +145,40 @@ class XGO():
     When instantiating XGO, you need to specify the serial
     communication interface between the upper computer and the machine dog
     """
-    def __init__(self, port):
-        self.ser = serial.Serial(port, 115200, timeout=0.5)
+
+    def __init__(self, port, baud=115200, version='xgomini'):
+        self.ser = serial.Serial(port, baud, timeout=0.5)
         self.rx_FLAG = 0
         self.rx_COUNT = 0
         self.rx_ADDR = 0
         self.rx_LEN = 0
         self.rx_data = bytearray(50)
+        changePara(version)
         pass
 
-    def _send(self, key, index=1):
+    def __send(self, key, index=1, len=1):
         mode = 0x01
         order = XGOorder[key][0] + index - 1
-        len = 1
-        value = XGOorder[key][index]
-        sum_data = ((len + 0x08) + mode + order + value) % 256
+        value = []
+        value_sum = 0
+        for i in range(0, len):
+            value.append(XGOorder[key][index + i])
+            value_sum = value_sum + XGOorder[key][index + i]
+        sum_data = ((len + 0x08) + mode + order + value_sum) % 256
         sum_data = 255 - sum_data
         tx = [0x55, 0x00, (len + 0x08), mode, order]
-        tx.extend([value])
+        tx.extend(value)
         tx.extend([sum_data, 0x00, 0xAA])
         self.ser.write(tx)
-        print(tx)
 
-    def _read(self, addr, read_len=1):
+    def __read(self, addr, read_len=1):
         mode = 0x02
         sum_data = (0x09 + mode + addr + read_len) % 256
         sum_data = 255 - sum_data
         tx = [0x55, 0x00, 0x09, mode, addr, read_len, sum_data, 0x00, 0xAA]
+        time.sleep(0.1)
+        self.ser.flushInput()
         self.ser.write(tx)
-        print(tx)
 
     def stop(self):
         self.move_x(0)
@@ -141,15 +196,15 @@ class XGO():
 
     def move_x(self, step):
         XGOorder["VX"][1] = conver2u8(step, XGOparam["VX_LIMIT"])
-        self._send("VX")
+        self.__send("VX")
 
     def move_y(self, step):
         XGOorder["VY"][1] = conver2u8(step, XGOparam["VY_LIMIT"])
-        self._send("VY")
+        self.__send("VY")
 
     def turn(self, step):
         XGOorder["VYAW"][1] = conver2u8(step, XGOparam["VYAW_LIMIT"])
-        self._send("VYAW")
+        self.__send("VYAW")
 
     def forward(self, step):
         self.move_x(abs(step))
@@ -169,13 +224,13 @@ class XGO():
     def turnright(self, step):
         self.turn(-abs(step))
 
-    def _translation(self, direction, data):
+    def __translation(self, direction, data):
         index = search(direction, ['x', 'y', 'z'])
         if index == -1:
             print("ERROR!Direction must be 'x', 'y' or 'z'")
             return
-        XGOorder["TRANSLATION"][index] = conver2u8(data, XGOparam["TRANSLATION_LIMIT"][index-1])
-        self._send("TRANSLATION", index)
+        XGOorder["TRANSLATION"][index] = conver2u8(data, XGOparam["TRANSLATION_LIMIT"][index - 1])
+        self.__send("TRANSLATION", index)
 
     def translation(self, direction, data):
         """
@@ -187,17 +242,17 @@ class XGO():
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(data)):
-                self._translation(direction[i], data[i])
+                self.__translation(direction[i], data[i])
         else:
-            self._translation(direction, data)
+            self.__translation(direction, data)
 
-    def _attitude(self, direction, data):
+    def __attitude(self, direction, data):
         index = search(direction, ['r', 'p', 'y'])
         if index == -1:
             print("ERROR!Direction must be 'r', 'p' or 'y'")
             return
-        XGOorder["ATTITUDE"][index] = conver2u8(data, XGOparam["ATTITUDE_LIMIT"][index-1])
-        self._send("ATTITUDE", index)
+        XGOorder["ATTITUDE"][index] = conver2u8(data, XGOparam["ATTITUDE_LIMIT"][index - 1])
+        self.__send("ATTITUDE", index)
 
     def attitude(self, direction, data):
         """
@@ -209,9 +264,9 @@ class XGO():
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(data)):
-                self._attitude(direction[i], data[i])
+                self.__attitude(direction[i], data[i])
         else:
-            self._attitude(direction, data)
+            self.__attitude(direction, data)
 
     def action(self, action_id):
         """
@@ -222,7 +277,8 @@ class XGO():
             print("ERROR!Illegal Action ID!")
             return
         XGOorder["ACTION"][1] = action_id
-        self._send("ACTION")
+        self.__send("ACTION")
+
     pass
 
     def reset(self):
@@ -231,6 +287,7 @@ class XGO():
         The robot dog stops moving and all parameters return to the initial state
         """
         self.action(255)
+        time.sleep(0.2)
 
     def leg(self, leg_id, data):
         """
@@ -252,11 +309,11 @@ class XGO():
         for i in range(3):
             index = 3 * (leg_id - 1) + i + 1
             XGOorder["LEG_POS"][index] = value[i]
-            self._send("LEG_POS", index)
+            self.__send("LEG_POS", index)
 
-    def _motor(self, index, data):
+    def __motor(self, index, data):
         XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index % 3 - 1])
-        self._send("MOTOR_ANGLE", index)
+        self.__send("MOTOR_ANGLE", index)
 
     def motor(self, motor_id, data):
         """
@@ -276,35 +333,34 @@ class XGO():
                     return
                 index.append(temp_index)
             for i in range(len(index)):
-                self._motor(index[i], data[i])
+                self.__motor(index[i], data[i])
         else:
             index = search(motor_id, MOTOR_ID)
-            self._motor(index, data)
+            self.__motor(index, data)
 
     def unload_motor(self, leg_id):
-        if leg_id not in [1,2,3,4]:
+        if leg_id not in [1, 2, 3, 4]:
             print('ERROR!leg_id must be 1, 2, 3 or 4')
             return
         XGOorder["UNLOAD_MOTOR"][1] = 0x10 + leg_id
-        self._send("UNLOAD_MOTOR")
+        self.__send("UNLOAD_MOTOR")
 
     def unload_allmotor(self):
         XGOorder["UNLOAD_MOTOR"][1] = 0x01
-        self._send("UNLOAD_MOTOR")
+        self.__send("UNLOAD_MOTOR")
 
     def load_motor(self, leg_id):
-        if leg_id not in [1,2,3,4]:
+        if leg_id not in [1, 2, 3, 4]:
             print('ERROR!leg_id must be 1, 2, 3 or 4')
             return
         XGOorder["LOAD_MOTOR"][1] = 0x20 + leg_id
-        self._send("LOAD_MOTOR")
+        self.__send("LOAD_MOTOR")
 
     def load_allmotor(self):
         XGOorder["LOAD_MOTOR"][1] = 0x00
-        self._send("LOAD_MOTOR")
+        self.__send("LOAD_MOTOR")
 
-
-    def _periodic_rot(self, direction, period):
+    def __periodic_rot(self, direction, period):
         index = search(direction, ['r', 'p', 'y'])
         if index == -1:
             print("ERROR!Direction must be 'r', 'p' or 'y'")
@@ -312,8 +368,8 @@ class XGO():
         if period == 0:
             XGOorder["PERIODIC_ROT"][index] = 0
         else:
-            XGOorder["PERIODIC_ROT"][index] = conver2u8(period, XGOparam["PERIOD_LIMIT"][0],mode=1)
-        self._send("PERIODIC_ROT", index)
+            XGOorder["PERIODIC_ROT"][index] = conver2u8(period, XGOparam["PERIOD_LIMIT"][0], mode=1)
+        self.__send("PERIODIC_ROT", index)
 
     def periodic_rot(self, direction, period):
         """
@@ -325,11 +381,11 @@ class XGO():
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(period)):
-                self._periodic_rot(direction[i], period[i])
+                self.__periodic_rot(direction[i], period[i])
         else:
-            self._periodic_rot(direction, period)
+            self.__periodic_rot(direction, period)
 
-    def _periodic_tran(self, direction, period):
+    def __periodic_tran(self, direction, period):
         index = search(direction, ['x', 'y', 'z'])
         if index == -1:
             print("ERROR!Direction must be 'x', 'y' or 'z'")
@@ -337,8 +393,8 @@ class XGO():
         if period == 0:
             XGOorder["PERIODIC_TRAN"][index] = 0
         else:
-            XGOorder["PERIODIC_TRAN"][index] = conver2u8(period, XGOparam["PERIOD_LIMIT"][0],mode=1)
-        self._send("PERIODIC_TRAN", index)
+            XGOorder["PERIODIC_TRAN"][index] = conver2u8(period, XGOparam["PERIOD_LIMIT"][0], mode=1)
+        self.__send("PERIODIC_TRAN", index)
 
     def periodic_tran(self, direction, period):
         """
@@ -350,9 +406,9 @@ class XGO():
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(period)):
-                self._periodic_tran(direction[i], period[i])
+                self.__periodic_tran(direction[i], period[i])
         else:
-            self._periodic_tran(direction, period)
+            self.__periodic_tran(direction, period)
 
     def mark_time(self, data):
         """
@@ -362,8 +418,8 @@ class XGO():
         if data == 0:
             XGOorder["MarkTime"][1] = 0
         else:
-            XGOorder["MarkTime"][1] = conver2u8(data, XGOparam["MARK_TIME_LIMIT"],mode=1)
-        self._send("MarkTime")
+            XGOorder["MarkTime"][1] = conver2u8(data, XGOparam["MARK_TIME_LIMIT"], mode=1)
+        self.__send("MarkTime")
 
     def pace(self, mode):
         """
@@ -380,49 +436,104 @@ class XGO():
             print("ERROR!Illegal Value!")
             return
         XGOorder["MOVE_MODE"][1] = value
-        self._send("MOVE_MODE")
-        
+        self.__send("MOVE_MODE")
+
     def imu(self, mode):
         """
         开启/关闭机器狗自稳状态
         Turn on / off the self stable state of the robot dog
         """
-        if mode != 0 and mode !=1:
+        if mode != 0 and mode != 1:
             print("ERROR!Illegal Value!")
             return
         XGOorder["IMU"][1] = mode
-        self._send("IMU")
+        self.__send("IMU")
 
-    def motor_speed(self,speed):
+    def perform(self, mode):
+        """
+        开启/关闭机器狗循环做动作状态
+        Turn on / off the action status of the robot dog cycle
+        """
+        if mode != 0 and mode != 1:
+            print("ERROR!Illegal Value!")
+            return
+        XGOorder["PERFORM"][1] = mode
+        self.__send("PERFORM")
+
+    def motor_speed(self, speed):
         """
         调节舵机转动速度，只在单独控制舵机的情况下有效
         Adjust the steering gear rotation speed,
         only effective when control the steering gear separately
         """
-        if speed <0 or speed>255:
+        if speed < 0 or speed > 255:
             print("ERROR!Illegal Value!The speed parameter needs to be between 0 and 255!")
             return
         if speed == 0:
             speed = 1
         XGOorder["MOTOR_SPEED"][1] = speed
-        self._send("MOTOR_SPEED")
+        self.__send("MOTOR_SPEED")
+
+    def bt_rename(self,name):
+        if type(name) != str:
+            print("ERROR!The input value must be of string type!")
+            return
+        len_name = len(name)
+        if len_name > 10:
+            print("ERROR!The length of the input string cannot be longer than 10!")
+            return
+        try:
+            XGOorder["BT_NAME"][1:len_name+1] = list(name.encode('ascii'))
+            self.__send("BT_NAME",len=len_name)
+        except:
+            print("ERROR!Name only supports characters in ASCII code!")
+
 
     def read_motor(self):
-        self._read(XGOorder["MOTOR_ANGLE"][0],12)
-        time.sleep(1)
+        """
+        读取12个舵机的角度
+        """
+        self.__read(XGOorder["MOTOR_ANGLE"][0], 12)
+        time.sleep(0.5)
         angle = []
-        if self._unpack():
+        if self.__unpack():
             for i in range(12):
-                angle.append(conver2float(self.rx_data[i], XGOparam["MOTOR_LIMIT"][i%3]))
+                angle.append(conver2float(self.rx_data[i], XGOparam["MOTOR_LIMIT"][i % 3]))
         return angle
+
     def read_battery(self):
-        self._read(XGOorder["BATTERY"][0], 1)
+        self.__read(XGOorder["BATTERY"][0], 1)
         time.sleep(1)
         battery = 0
-        if self._unpack():
+        if self.__unpack():
             battery = int(self.rx_data[0])
         return battery
-    def _unpack(self):
+
+    def read_roll(self):
+        self.__read(XGOorder["ROLL"][0], 4)
+        time.sleep(1)
+        roll = 0
+        if self.__unpack():
+            roll = Byte2Float(self.rx_data)
+        return roll
+
+    def read_pitch(self):
+        self.__read(XGOorder["PITCH"][0], 4)
+        time.sleep(1)
+        pitch = 0
+        if self.__unpack():
+            pitch = Byte2Float(self.rx_data)
+        return pitch
+
+    def read_yaw(self):
+        self.__read(XGOorder["YAW"][0], 4)
+        time.sleep(1)
+        yaw = 0
+        if self.__unpack():
+            yaw = Byte2Float(self.rx_data)
+        return yaw
+
+    def __unpack(self):
         n = self.ser.inWaiting()
         rx_CHECK = 0
         if n:
@@ -493,3 +604,42 @@ class XGO():
                         self.rx_ADDR = 0
                         self.rx_LEN = 0
         return False
+
+    def upgrade(self, hex_name):
+        """
+        处于测试阶段，请勿使用
+        """
+        XGOorder["UPGRADE"][1] = 1
+        self.__send("UPGRADE")
+        time.sleep(3.5)
+        self.upload_bin(hex_name)
+
+    def read_version(self):
+        """
+        处于测试阶段，请勿使用
+        """
+        self.__read(XGOorder["VERSION"][0], 10)
+        time.sleep(1)
+        if self.__unpack():
+            version = self.rx_data.decode('utf-8')
+        return version
+
+    def upload_bin(self, hex_name):
+        """
+        处于测试阶段，请勿使用
+        """
+        try:
+            with open(hex_name, 'rb') as f:
+                hex = f.read()
+            count = self.ser.write(hex)
+            print("更新成功，共发送字节数：", count)
+        except Exception as e:
+            print("---更新错误---")
+            print(e)
+
+    def calibration(self, state):
+        """
+        用于软件标定，请谨慎使用！！！
+        """
+        XGOorder["CALIBRATION"][1] = state
+        self.__send("CALIBRATION")
