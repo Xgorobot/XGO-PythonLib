@@ -2,8 +2,8 @@ import serial
 import struct
 import time
 
-__version__ = '1.1.8'
-__last_modified__ = '2022/1/5'
+__version__ = '1.2.0'
+__last_modified__ = '2023/2/16'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -15,7 +15,8 @@ XGOorder = {
     "CALIBRATION": [0x04, 0],
     "UPGRADE": [0x05, 0],
     "MOVE_TEST": [0x06, 1],
-    "VERSION": [0x07],
+    "FIRMWARE_VERSION": [0x07],
+    "GAIT_TYPE": [0x09, 0x00],
     "BT_NAME": [0x13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     "UNLOAD_MOTOR": [0x20, 0],
     "LOAD_MOTOR": [0x20, 0],
@@ -29,13 +30,17 @@ XGOorder = {
     "MOVE_MODE": [0x3D, 0],
     "ACTION": [0x3E, 0],
     "PERIODIC_TRAN": [0x80, 0, 0, 0],
-    "MOTOR_ANGLE": [0x50, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128],
+    "MOTOR_ANGLE": [0x50, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128],
     "MOTOR_SPEED": [0x5C, 1],
     "LEG_POS": [0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     "IMU": [0x61, 0],
     "ROLL": [0x62, 0],
     "PITCH": [0x63, 0],
-    "YAW": [0x64, 0]
+    "YAW": [0x64, 0],
+    "CLAW": [0x71, 0],
+    "ARM_MODE": [0x72, 0],
+    "ARM_X": [0x73, 0],
+    "ARM_Z": [0x74, 0]
 }
 
 """
@@ -44,15 +49,15 @@ Xgoparam is used to store the parameter limit range of the robot dog
 """
 
 XGOparam = {
-    "TRANSLATION_LIMIT": [35, 18, [75, 115]],
-    "ATTITUDE_LIMIT": [20, 15, 11],
-    "LEG_LIMIT": [35, 18, [75, 115]],
-    "MOTOR_LIMIT": [[-65, 73], [-66, 93], [-31, 31]],
+    "TRANSLATION_LIMIT": [35, 18, [75, 115]],  # X Y Z 平移范围
+    "ATTITUDE_LIMIT": [20, 15, 11],  # Roll Pitch Yaw 姿态范围
+    "LEG_LIMIT": [35, 18, [75, 115]],  # 腿长范围
+    "MOTOR_LIMIT": [[-73, 57], [-66, 93], [-31, 31], [-30, 30], [-60, 70], [-90, 105]],  # 下 中 上 舵机范围
     "PERIOD_LIMIT": [[1.5, 8]],
-    "MARK_TIME_LIMIT": [10, 35],
-    "VX_LIMIT": 25,
-    "VY_LIMIT": 18,
-    "VYAW_LIMIT": 100
+    "MARK_TIME_LIMIT": [10, 35],  # 原地踏步高度范围
+    "VX_LIMIT": 25,  # X速度范围
+    "VY_LIMIT": 18,  # Y速度范围
+    "VYAW_LIMIT": 100  # 旋转速度范围
 }
 
 
@@ -115,27 +120,29 @@ def changePara(version):
     global XGOparam
     if version == 'xgomini':
         XGOparam = {
-            "TRANSLATION_LIMIT": [35, 18, [75, 115]],
-            "ATTITUDE_LIMIT": [20, 15, 11],
-            "LEG_LIMIT": [35, 18, [75, 115]],
-            "MOTOR_LIMIT": [[-65, 73], [-66, 93], [-31, 31]],
+            "TRANSLATION_LIMIT": [35, 18, [75, 115]],  # X Y Z 平移范围
+            "ATTITUDE_LIMIT": [20, 15, 11],  # Roll Pitch Yaw 姿态范围
+            "LEG_LIMIT": [35, 18, [75, 115]],  # 腿长范围
+            "MOTOR_LIMIT": [[-73, 57], [-66, 93], [-31, 31], [-65, 65], [-85, 50], [-75, 90]],  # 下 中 上 舵机范围
             "PERIOD_LIMIT": [[1.5, 8]],
-            "MARK_TIME_LIMIT": [10, 35],
-            "VX_LIMIT": 25,
-            "VY_LIMIT": 18,
-            "VYAW_LIMIT": 100
+            "MARK_TIME_LIMIT": [10, 35],  # 原地踏步高度范围
+            "VX_LIMIT": 25,  # X速度范围
+            "VY_LIMIT": 18,  # Y速度范围
+            "VYAW_LIMIT": 100,  # 旋转速度范围
+            "ARM_LIMIT": [[-80, 155], [-95, 155]]
         }
     elif version == 'xgolite':
         XGOparam = {
-            "TRANSLATION_LIMIT": [25, 15, [60, 110]],
+            "TRANSLATION_LIMIT": [25, 18, [60, 110]],
             "ATTITUDE_LIMIT": [20, 10, 12],
-            "LEG_LIMIT": [25, 15, [60, 110]],
-            "MOTOR_LIMIT": [[-85, 50], [-70, 90], [-30, 30]],
+            "LEG_LIMIT": [25, 18, [60, 110]],
+            "MOTOR_LIMIT": [[-70, 50], [-70, 90], [-30, 30], [-65, 65], [-70, 60], [-90, 105]],
             "PERIOD_LIMIT": [[1.5, 8]],
             "MARK_TIME_LIMIT": [10, 25],
             "VX_LIMIT": 25,
-            "VY_LIMIT": 15,
-            "VYAW_LIMIT": 100
+            "VY_LIMIT": 18,
+            "VYAW_LIMIT": 100,
+            "ARM_LIMIT": [[-80, 155], [-95, 155]]
         }
 
 
@@ -148,6 +155,9 @@ class XGO():
 
     def __init__(self, port, baud=115200, version='xgomini'):
         self.ser = serial.Serial(port, baud, timeout=0.5)
+        self.ser.flushOutput()
+        self.ser.flushInput()
+        self.port = port
         self.rx_FLAG = 0
         self.rx_COUNT = 0
         self.rx_ADDR = 0
@@ -170,6 +180,7 @@ class XGO():
         tx.extend(value)
         tx.extend([sum_data, 0x00, 0xAA])
         self.ser.write(tx)
+        print("tx_data: ", tx)
 
     def __read(self, addr, read_len=1):
         mode = 0x02
@@ -179,6 +190,12 @@ class XGO():
         time.sleep(0.1)
         self.ser.flushInput()
         self.ser.write(tx)
+        #print("tx_data: ", tx)
+
+    def __change_baud(self, baud):
+        self.ser.flush()
+        self.ser.close()
+        self.ser = serial.Serial(self.port, baud, timeout=0.5)
 
     def stop(self):
         self.move_x(0)
@@ -312,7 +329,12 @@ class XGO():
             self.__send("LEG_POS", index)
 
     def __motor(self, index, data):
-        XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index % 3 - 1])
+        if index < 13:
+            XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index % 3 - 1])
+        elif index == 13:
+            self.claw(conver2u8(data, XGOparam["MOTOR_LIMIT"][3]))
+        else:
+            XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index - 10])
         self.__send("MOTOR_ANGLE", index)
 
     def motor(self, motor_id, data):
@@ -320,7 +342,11 @@ class XGO():
         控制机器狗单个舵机转动
         Control the rotation of a single steering gear of the robot
         """
-        MOTOR_ID = [11, 12, 13, 21, 22, 23, 31, 32, 33, 41, 42, 43]
+        MOTOR_ID = [11, 12, 13, 21, 22, 23, 31, 32, 33, 41, 42, 43, 51, 52, 53]
+        if motor_id == 51:
+            self.claw(data)
+            return
+
         if isinstance(motor_id, list):
             if len(motor_id) != len(data):
                 print("Error!Length Mismatching!")
@@ -339,8 +365,8 @@ class XGO():
             self.__motor(index, data)
 
     def unload_motor(self, leg_id):
-        if leg_id not in [1, 2, 3, 4]:
-            print('ERROR!leg_id must be 1, 2, 3 or 4')
+        if leg_id not in [1, 2, 3, 4, 5]:
+            print('ERROR!leg_id must be 1, 2, 3 ,4 or 5')
             return
         XGOorder["UNLOAD_MOTOR"][1] = 0x10 + leg_id
         self.__send("UNLOAD_MOTOR")
@@ -350,8 +376,8 @@ class XGO():
         self.__send("UNLOAD_MOTOR")
 
     def load_motor(self, leg_id):
-        if leg_id not in [1, 2, 3, 4]:
-            print('ERROR!leg_id must be 1, 2, 3 or 4')
+        if leg_id not in [1, 2, 3, 4, 5]:
+            print('ERROR!leg_id must be 1, 2, 3 ,4 or 5')
             return
         XGOorder["LOAD_MOTOR"][1] = 0x20 + leg_id
         self.__send("LOAD_MOTOR")
@@ -438,6 +464,16 @@ class XGO():
         XGOorder["MOVE_MODE"][1] = value
         self.__send("MOVE_MODE")
 
+    def gait_type(self, mode):
+        if mode == "trot":
+            value = 0x00
+        elif mode == "walk":
+            value = 0x01
+        elif mode == "high_walk":
+            value = 0x02
+        XGOorder["GAIT_TYPE"][1] = value
+        self.__send("GAIT_TYPE")
+
     def imu(self, mode):
         """
         开启/关闭机器狗自稳状态
@@ -474,7 +510,7 @@ class XGO():
         XGOorder["MOTOR_SPEED"][1] = speed
         self.__send("MOTOR_SPEED")
 
-    def bt_rename(self,name):
+    def bt_rename(self, name):
         if type(name) != str:
             print("ERROR!The input value must be of string type!")
             return
@@ -483,163 +519,221 @@ class XGO():
             print("ERROR!The length of the input string cannot be longer than 10!")
             return
         try:
-            XGOorder["BT_NAME"][1:len_name+1] = list(name.encode('ascii'))
-            self.__send("BT_NAME",len=len_name)
+            XGOorder["BT_NAME"][1:len_name + 1] = list(name.encode('ascii'))
+            self.__send("BT_NAME", len=len_name)
         except:
             print("ERROR!Name only supports characters in ASCII code!")
 
-
     def read_motor(self):
         """
-        读取12个舵机的角度
+        读取15个舵机的角度
         """
-        self.__read(XGOorder["MOTOR_ANGLE"][0], 12)
-        time.sleep(0.5)
+        self.__read(XGOorder["MOTOR_ANGLE"][0], 15)
+        self.ser.read_all()
         angle = []
         if self.__unpack():
-            for i in range(12):
-                angle.append(conver2float(self.rx_data[i], XGOparam["MOTOR_LIMIT"][i % 3]))
+            for i in range(self.rx_COUNT + 1):
+                if i < 12:
+                    angle.append(round(conver2float(self.rx_data[i], XGOparam["MOTOR_LIMIT"][i % 3]), 2))
+                else:
+                    angle.append(round(conver2float(self.rx_data[i], XGOparam["MOTOR_LIMIT"][i - 9]), 2))
         return angle
 
     def read_battery(self):
+        self.ser.read_all()
         self.__read(XGOorder["BATTERY"][0], 1)
-        time.sleep(1)
         battery = 0
         if self.__unpack():
             battery = int(self.rx_data[0])
         return battery
 
+    def read_firmware(self):
+        self.__read(XGOorder["FIRMWARE_VERSION"][0], 10)
+        self.ser.read_all()
+        firmware_version = 'Null'
+        if self.__unpack():
+            data = self.rx_data[0:10]
+            firmware_version = data.decode("utf-8").strip('\0')
+        return firmware_version
+
     def read_roll(self):
         self.__read(XGOorder["ROLL"][0], 4)
-        time.sleep(1)
+        self.ser.read_all()
         roll = 0
         if self.__unpack():
             roll = Byte2Float(self.rx_data)
-        return roll
+        return round(roll, 2)
 
     def read_pitch(self):
         self.__read(XGOorder["PITCH"][0], 4)
-        time.sleep(1)
+        self.ser.read_all()
         pitch = 0
         if self.__unpack():
             pitch = Byte2Float(self.rx_data)
-        return pitch
+        return round(pitch, 2)
 
     def read_yaw(self):
         self.__read(XGOorder["YAW"][0], 4)
-        time.sleep(1)
+        self.ser.read_all()
         yaw = 0
         if self.__unpack():
             yaw = Byte2Float(self.rx_data)
-        return yaw
+        return round(yaw, 2)
 
-    def __unpack(self):
-        n = self.ser.inWaiting()
-        rx_CHECK = 0
-        if n:
-            data = self.ser.read(n)
-            for num in data:
-                if self.rx_FLAG == 0:
-                    if num == 0x55:
-                        self.rx_FLAG = 1
-                    else:
-                        self.rx_FLAG = 0
+    def __unpack(self, timeout=1):
+        t = time.time()
+        rx_msg = []
+        while time.time() - t < timeout:
+            n = self.ser.inWaiting()
+            rx_CHECK = 0
+            if n:
+                data = self.ser.read(n)
+                for num in data:
+                    rx_msg.append(num)
+                    if self.rx_FLAG == 0:
+                        if num == 0x55:
+                            self.rx_FLAG = 1
+                        else:
+                            self.rx_FLAG = 0
 
-                elif self.rx_FLAG == 1:
-                    if num == 0x00:
-                        self.rx_FLAG = 2
-                    else:
-                        self.rx_FLAG = 0
+                    elif self.rx_FLAG == 1:
+                        if num == 0x00:
+                            self.rx_FLAG = 2
+                        else:
+                            self.rx_FLAG = 0
 
-                elif self.rx_FLAG == 2:
-                    self.rx_LEN = num
-                    self.rx_FLAG = 3
+                    elif self.rx_FLAG == 2:
+                        self.rx_LEN = num
+                        self.rx_FLAG = 3
 
-                elif self.rx_FLAG == 3:
-                    self.rx_TYPE = num
-                    self.rx_FLAG = 4
+                    elif self.rx_FLAG == 3:
+                        self.rx_TYPE = num
+                        self.rx_FLAG = 4
 
-                elif self.rx_FLAG == 4:
-                    self.rx_ADDR = num
-                    self.rx_FLAG = 5
-
-                elif self.rx_FLAG == 5:
-                    if self.rx_COUNT == (self.rx_LEN - 9):
-                        self.rx_data[self.rx_COUNT] = num
+                    elif self.rx_FLAG == 4:
+                        self.rx_ADDR = num
+                        self.rx_FLAG = 5
                         self.rx_COUNT = 0
-                        self.rx_FLAG = 6
-                    elif self.rx_COUNT < self.rx_LEN - 9:
-                        self.rx_data[self.rx_COUNT] = num
-                        self.rx_COUNT = self.rx_COUNT + 1
 
-                elif self.rx_FLAG == 6:
-                    for i in self.rx_data[0:(self.rx_LEN - 8)]:
-                        rx_CHECK = rx_CHECK + i
-                    rx_CHECK = 255 - (self.rx_LEN + self.rx_TYPE + self.rx_ADDR + rx_CHECK) % 256
-                    if num == rx_CHECK:
-                        self.rx_FLAG = 7
-                    else:
-                        self.rx_FLAG = 0
-                        self.rx_COUNT = 0
-                        self.rx_ADDR = 0
-                        self.rx_LEN = 0
+                    elif self.rx_FLAG == 5:
+                        if self.rx_COUNT == (self.rx_LEN - 9):
+                            self.rx_data[self.rx_COUNT] = num
+                            self.rx_FLAG = 6
+                        elif self.rx_COUNT < self.rx_LEN - 9:
+                            self.rx_data[self.rx_COUNT] = num
+                            self.rx_COUNT = self.rx_COUNT + 1
 
-                elif self.rx_FLAG == 7:
-                    if num == 0x00:
-                        self.rx_FLAG = 8
-                    else:
-                        self.rx_FLAG = 0
-                        self.rx_COUNT = 0
-                        self.rx_ADDR = 0
-                        self.rx_LEN = 0
+                    elif self.rx_FLAG == 6:
+                        for i in self.rx_data[0:(self.rx_LEN - 8)]:
+                            rx_CHECK = rx_CHECK + i
+                        rx_CHECK = 255 - (self.rx_LEN + self.rx_TYPE + self.rx_ADDR + rx_CHECK) % 256
+                        if num == rx_CHECK:
+                            self.rx_FLAG = 7
+                        else:
+                            self.rx_FLAG = 0
+                            self.rx_COUNT = 0
+                            self.rx_ADDR = 0
+                            self.rx_LEN = 0
 
-                elif self.rx_FLAG == 8:
-                    if num == 0xAA:
-                        self.rx_FLAG = 0
-                        self.rx_COUNT = 0
-                        return True
-                    else:
-                        self.rx_FLAG = 0
-                        self.rx_COUNT = 0
-                        self.rx_ADDR = 0
-                        self.rx_LEN = 0
+                    elif self.rx_FLAG == 7:
+                        if num == 0x00:
+                            self.rx_FLAG = 8
+                        else:
+                            self.rx_FLAG = 0
+                            self.rx_COUNT = 0
+                            self.rx_ADDR = 0
+                            self.rx_LEN = 0
+
+                    elif self.rx_FLAG == 8:
+                        if num == 0xAA:
+                            self.rx_FLAG = 0
+                            print("rx_data: ", rx_msg)
+                            return True
+                        else:
+                            self.rx_FLAG = 0
+                            self.rx_COUNT = 0
+                            self.rx_ADDR = 0
+                            self.rx_LEN = 0
         return False
 
-    def upgrade(self, hex_name):
+    def upgrade(self, filename):
         """
         处于测试阶段，请勿使用
         """
         XGOorder["UPGRADE"][1] = 1
+        self.ser.flush()
         self.__send("UPGRADE")
-        time.sleep(3.5)
-        self.upload_bin(hex_name)
+        if self.__unpack(10):
+            if self.rx_data[0] == 0x55:
+                time.sleep(1)
+                print("Start!")
+                self.__send_bin(filename)
+            else:
+                print("Upgrade Response Error!")
+        else:
+            print("Upgrade Timeout!")
 
-    def read_version(self):
-        """
-        处于测试阶段，请勿使用
-        """
-        self.__read(XGOorder["VERSION"][0], 10)
-        time.sleep(1)
-        if self.__unpack():
-            version = self.rx_data.decode('utf-8')
-        return version
+    def read_lib_version(self):
+        return __version__
 
-    def upload_bin(self, hex_name):
+    def __send_bin(self, filename):
         """
         处于测试阶段，请勿使用
         """
         try:
-            with open(hex_name, 'rb') as f:
-                hex = f.read()
-            count = self.ser.write(hex)
-            print("更新成功，共发送字节数：", count)
+            self.__change_baud(350000)
+            with open(filename, 'rb') as f:
+                file = f.read()
+            print("The file size is", len(file), ' bytes.')
+            print("The expected upgrade time is", round(len(file) / 350000 * 8 * 1.3), ' s.')
+            self.ser.write(file)
+            print("Done!")
+            self.__change_baud(115200)
         except Exception as e:
-            print("---更新错误---")
+            print("Send bin file error!")
             print(e)
 
     def calibration(self, state):
         """
         用于软件标定，请谨慎使用！！！
         """
-        XGOorder["CALIBRATION"][1] = state
+        if state == 'start':
+            XGOorder["CALIBRATION"][1] = 1
+        elif state == 'end':
+            XGOorder["CALIBRATION"][1] = 0
+        else:
+            print("ERROR!")
         self.__send("CALIBRATION")
+        return
+
+    def arm(self, arm_x, arm_z):
+        """
+        控制机器狗的机械臂的前后和上下移动
+        Control the movement of the arm of the robot
+        """
+        try:
+            arm_x_u8 = conver2u8(arm_x, XGOparam["ARM_LIMIT"][0])
+            arm_z_u8 = conver2u8(arm_z, XGOparam["ARM_LIMIT"][1])
+        except:
+            print("Error!Illegal Value!")
+            return
+        XGOorder["ARM_X"][1] = arm_x_u8
+        XGOorder["ARM_Z"][1] = arm_z_u8
+        self.__send("ARM_X")
+        self.__send("ARM_Z")
+
+    def arm_mode(self, mode):
+        if mode != 0x01 and mode != 0x00:
+            print("Error!Illegal Value!")
+            return
+        XGOorder["ARM_MODE"][1] = mode
+        self.__send("ARM_MODE")
+
+    def claw(self, pos):
+        try:
+            claw_pos = conver2u8(pos, [0, 255])
+        except:
+            print("Error!Illegal Value!")
+            return
+        XGOorder["CLAW"][1] = claw_pos
+        self.__send("CLAW")
