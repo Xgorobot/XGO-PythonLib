@@ -25,8 +25,8 @@ import json
 from xgolib import XGO
 
 
-__versinon__ = '1.1.0'
-__last_modified__ = '2023/3/30'
+__versinon__ = '1.1.1'
+__last_modified__ = '2023/6/2'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
