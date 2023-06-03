@@ -3,24 +3,16 @@ xgo图形化python库
 '''
 import cv2
 import cv2 as cv
-import copy
-import argparse
 import numpy as np
-import mediapipe as mp
-import shutil,requests
-import urllib.request
 import math
-import os,sys,time,logging
+import os,sys,time
 import spidev as SPI
 import LCD_2inch
-import onnxruntime 
 import RPi.GPIO as GPIO
 from PIL import Image,ImageDraw,ImageFont
-from ctypes import c_void_p
-from tensorflow.keras.utils import img_to_array
-from keras.preprocessing import image
-from pyexpat import model
-from keras.models import load_model
+# from pyexpat import model
+# from keras.preprocessing import image
+# from keras.models import load_model
 import json
 from xgolib import XGO
 
@@ -31,41 +23,34 @@ __last_modified__ = '2023/6/2'
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 
-display = LCD_2inch.LCD_2inch()
-display.Init()
-display.clear()
-splash = Image.new("RGB",(320,240),"black")
-display.ShowImage(splash)
 
-#字体载入
-font1 = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",15)
-#情绪识别
-face_classifier=cv2.CascadeClassifier('/home/pi/xgoEdu/model/haarcascade_frontalface_default.xml')
-classifier = load_model('/home/pi/xgoEdu/model/EmotionDetectionModel.h5')
-class_labels=['Angry','Happy','Neutral','Sad','Surprise']
+# #情绪识别
+# face_classifier=cv2.CascadeClassifier('/home/pi/xgoEdu/model/haarcascade_frontalface_default.xml')
+# classifier = load_model('/home/pi/xgoEdu/model/EmotionDetectionModel.h5')
+# class_labels=['Angry','Happy','Neutral','Sad','Surprise']
 
-#年纪及性别识别
-# 网络模型  和  预训练模型
-faceProto = "/home/pi/xgoEdu/model/opencv_face_detector.pbtxt"
-faceModel = "/home/pi/xgoEdu/model/opencv_face_detector_uint8.pb"
+# #年纪及性别识别
+# # 网络模型  和  预训练模型
+# faceProto = "/home/pi/xgoEdu/model/opencv_face_detector.pbtxt"
+# faceModel = "/home/pi/xgoEdu/model/opencv_face_detector_uint8.pb"
 
-ageProto = "/home/pi/xgoEdu/model/age_deploy.prototxt"
-ageModel = "/home/pi/xgoEdu/model/age_net.caffemodel"
+# ageProto = "/home/pi/xgoEdu/model/age_deploy.prototxt"
+# ageModel = "/home/pi/xgoEdu/model/age_net.caffemodel"
 
-genderProto = "/home/pi/xgoEdu/model/gender_deploy.prototxt"
-genderModel = "/home/pi/xgoEdu/model/gender_net.caffemodel"
+# genderProto = "/home/pi/xgoEdu/model/gender_deploy.prototxt"
+# genderModel = "/home/pi/xgoEdu/model/gender_net.caffemodel"
 
-# 模型均值
-MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
-ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
-genderList = ['Male', 'Female']
+# # 模型均值
+# MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
+# ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+# genderList = ['Male', 'Female']
 
-# 加载网络
-ageNet = cv.dnn.readNet(ageModel, ageProto)
-genderNet = cv.dnn.readNet(genderModel, genderProto)
-# 人脸检测的网络和模型
-faceNet = cv.dnn.readNet(faceModel, faceProto)
-padding = 20
+# # 加载网络
+# ageNet = cv.dnn.readNet(ageModel, ageProto)
+# genderNet = cv.dnn.readNet(genderModel, genderProto)
+# # 人脸检测的网络和模型
+# faceNet = cv.dnn.readNet(faceModel, faceProto)
+# padding = 20
 
 cap =cv2.VideoCapture(0)
 cap.set(3,320)
@@ -742,6 +727,12 @@ class XgoExtend(XGO):
 
 class XGOEDU():
     def __init__(self):
+        self.display = LCD_2inch.LCD_2inch()
+        self.display.Init()
+        self.display.clear()
+        self.splash = Image.new("RGB",(320,240),"black")
+        self.draw = ImageDraw.Draw(self.splash)
+        self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",15)
         self.key1=17
         self.key2=22
         self.key3=23
@@ -796,10 +787,10 @@ class XGOEDU():
     图片的大小为320*240,jpg格式
     '''
     def lcd_picture(self,x,y,filename):
-        splash = Image.new("RGB", (display.height, display.width ),splash_theme_color)
+        splash = Image.new("RGB",(320,240),"black")
         draw = ImageDraw.Draw(splash)
         image = Image.open(filename)
-        draw.bitmap((x,y),image)
+        splash.paste(image,(x,y))
         display.ShowImage(splash)
     #显示文字
     '''
@@ -807,10 +798,11 @@ class XGOEDU():
     font1为载入字体,微软雅黑
     目前支持英文和数字，暂不支持中文
     '''
-    def lcd_text(self,x1,y1,content):
-        draw = ImageDraw.Draw(splash)
-        draw.text((x1,y1),content,fill = "WHITE",font=font1)
-        display.ShowImage(splash)
+    def lcd_text(self,x1,y1,content,fontsize=15):
+        if fontsize!=15:
+            self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",fontsize)
+        self.draw.text((x1,y1),content,fill = "WHITE",font=self.font)
+        self.display.ShowImage(self.splash)
     #key_value
     '''
     a左上按键
@@ -1024,6 +1016,7 @@ class XGOEDU():
     情绪识别
     '''
     def emotion(self):
+        from tensorflow.keras.utils import img_to_array
         while True:
             success,image=cap.read()
             labels=[]
@@ -1114,6 +1107,7 @@ class XGOEDU():
 
 class hands():
     def __init__(self,model_complexity,max_num_hands,min_detection_confidence,min_tracking_confidence):
+        import mediapipe as mp
         self.model_complexity = model_complexity
         self.max_num_hands = max_num_hands
         self.min_detection_confidence = min_detection_confidence
@@ -1126,6 +1120,7 @@ class hands():
         )
     
     def run(self,cv_img):
+        import copy
         image = cv_img
         debug_image = copy.deepcopy(image)
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -1239,6 +1234,7 @@ class hands():
     
 class yoloXgo():
     def __init__(self,model,classes,inputwh,thresh):
+        import onnxruntime 
         self.session = onnxruntime.InferenceSession(model)
         self.input_width=inputwh[0]
         self.input_height=inputwh[1]
@@ -1363,6 +1359,7 @@ class yoloXgo():
 
 class face_detection():
     def __init__(self,min_detection_confidence):
+        import mediapipe as mp
         self.model_selection = 0
         self.min_detection_confidence =min_detection_confidence
         self.mp_face_detection = mp.solutions.face_detection
