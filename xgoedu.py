@@ -795,11 +795,15 @@ class XGOEDU():
     '''
     图片的大小为320*240,jpg格式
     '''
-    def lcd_picture(self,filename):
+    def lcd_picture(self,x,y,filename):
+        splash = Image.new("RGB", (display.height, display.width ),splash_theme_color)
+        draw = ImageDraw.Draw(splash)
         image = Image.open(filename)
-        display.ShowImage(image)
+        draw.bitmap((x,y),image)
+        display.ShowImage(splash)
     #显示文字
     '''
+    x1,y1为初始点坐标,content为内容
     font1为载入字体,微软雅黑
     目前支持英文和数字，暂不支持中文
     '''
