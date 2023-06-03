@@ -2,7 +2,6 @@
 xgo图形化python库
 '''
 import cv2
-import cv2 as cv
 import numpy as np
 import math
 import os,sys,time
@@ -46,10 +45,10 @@ GPIO.setmode(GPIO.BCM)
 # genderList = ['Male', 'Female']
 
 # # 加载网络
-# ageNet = cv.dnn.readNet(ageModel, ageProto)
-# genderNet = cv.dnn.readNet(genderModel, genderProto)
+# ageNet = cv2.dnn.readNet(ageModel, ageProto)
+# genderNet = cv2.dnn.readNet(genderModel, genderProto)
 # # 人脸检测的网络和模型
-# faceNet = cv.dnn.readNet(faceModel, faceProto)
+# faceNet = cv2.dnn.readNet(faceModel, faceProto)
 # padding = 20
 
 cap =cv2.VideoCapture(0)
@@ -63,7 +62,7 @@ def getFaceBox(net, frame, conf_threshold=0.7):
     frameOpencvDnn = frame.copy()
     frameHeight = frameOpencvDnn.shape[0]
     frameWidth = frameOpencvDnn.shape[1]
-    blob = cv.dnn.blobFromImage(frameOpencvDnn, 1.0, (300, 300), [104, 117, 123], True, False)
+    blob = cv2.dnn.blobFromImage(frameOpencvDnn, 1.0, (300, 300), [104, 117, 123], True, False)
     net.setInput(blob)
     detections = net.forward()
     bboxes = []
@@ -75,7 +74,7 @@ def getFaceBox(net, frame, conf_threshold=0.7):
             x2 = int(detections[0, 0, i, 5] * frameWidth)
             y2 = int(detections[0, 0, i, 6] * frameHeight)
             bboxes.append([x1, y1, x2, y2])
-            cv.rectangle(frameOpencvDnn, (x1, y1), (x2, y2), (0, 255, 0), int(round(frameHeight / 150)),8)  
+            cv2.rectangle(frameOpencvDnn, (x1, y1), (x2, y2), (0, 255, 0), int(round(frameHeight / 150)),8)  
     return frameOpencvDnn, bboxes
 
 '''
@@ -741,67 +740,48 @@ class XGOEDU():
         GPIO.setup(self.key2,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key3,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key4,GPIO.IN,GPIO.PUD_UP)
-    #画布初始化
-    def lcd_init(self,color):
-        if color == "black":
-            splash = Image.new("RGB",(320,240),"black")
-        elif color == "white":
-            splash = Image.new("RGB",(320,240),"white")
-        elif color == "red":
-            splash = Image.new("RGB",(320,240),"red") 
-        elif color == "green":
-            splash = Image.new("RGB",(320,240),"green")
-        elif color == "blue":
-            splash = Image.new("RGB",(320,240),"blue")
-        display.ShowImage(splash)
+
     #绘画直线
     '''
     x1,y1为初始点坐标,x2,y2为终止点坐标
     '''
-    def lcd_line(self,x1,y1,x2,y2):
-        draw = ImageDraw.Draw(splash)
-        draw.line([(x1,y1),(x2,y2)],fill = "WHITE",width = 2)
-        display.ShowImage(splash)
+    def lcd_line(self,x1,y1,x2,y2,color="WHITE",width=2):
+        self.draw.line([(x1,y1),(x2,y2)],fill=color ,width=width)
+        self.display.ShowImage(self.splash)
     #绘画圆
     '''
     x1,y1,x2,y2为定义给定边框的两个点,angle0为初始角度,angle1为终止角度
     '''
-    def lcd_circle(self,x1,y1,x2,y2,angle0,angle1):
-        draw = ImageDraw.Draw(splash)
-        draw.arc((x1,y1,x2,y2),angle0,angle1,fill=(255,255,255),width = 2)
-        display.ShowImage(splash)
+    def lcd_circle(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
+        self.draw.arc((x1,y1,x2,y2),angle0,angle1,fill=color ,width=width)
+        self.display.ShowImage(self.splash)
     #绘画矩形
     '''
     x1,y1为初始点坐标,x2,y2为对角线终止点坐标
     '''
-    def lcd_rectangle(self,x1,y1,x2,y2):
-        draw = ImageDraw.Draw(splash)
-        draw.rectangle((x1,y1,x2,y2),fill = None,outline = "WHITE",width = 2)
-        display.ShowImage(splash)
+    def lcd_rectangle(self,x1,y1,x2,y2,fill=None,outline="WHITE",width=2):
+        self.draw.rectangle((x1,y1,x2,y2),fill=fill,outline=outline,width=width)
+        self.display.ShowImage(self.splash)
     #清除屏幕
     def lcd_clear(self):
-        splash = Image.new("RGB",(320,240),"black")
-        display.ShowImage(splash)
+        self.splash = Image.new("RGB",(320,240),"black")
+        self.display.ShowImage(self.splash)
     #显示图片
     '''
     图片的大小为320*240,jpg格式
     '''
-    def lcd_picture(self,x,y,filename):
-        splash = Image.new("RGB",(320,240),"black")
-        draw = ImageDraw.Draw(splash)
+    def lcd_picture(self,filename,x=0,y=0):
         image = Image.open(filename)
-        splash.paste(image,(x,y))
-        display.ShowImage(splash)
+        self.splash.paste(image,(x,y))
+        self.display.ShowImage(self.splash)
     #显示文字
     '''
     x1,y1为初始点坐标,content为内容
-    font1为载入字体,微软雅黑
-    目前支持英文和数字，暂不支持中文
     '''
-    def lcd_text(self,x1,y1,content,fontsize=15):
+    def lcd_text(self,x1,y1,content,color="WHITE",fontsize=15):
         if fontsize!=15:
             self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",fontsize)
-        self.draw.text((x1,y1),content,fill = "WHITE",font=self.font)
+        self.draw.text((x1,y1),content,fill=color,font=self.font)
         self.display.ShowImage(self.splash)
     #key_value
     '''
@@ -839,16 +819,20 @@ class XGOEDU():
     filename 文件名 字符串
     seconds 录制时间S 字符串
     '''
-    def xgoAudioRecord(self,filename,seconds):
-        command1 = "sudo arecord -D hw:1,0 -d"
-        command2 = "-f S32_LE -r 16000 -c 2"
-        os.system(command1+" "+seconds+" "+command2+" "+filename)
+    def xgoAudioRecord(self,filename="record.wav",seconds=5):
+        command1 = "sudo arecord -d"
+        command2 = "-f S32_LE -r 16000 -c 1 -t wav"
+        cmd=command1+" "+str(seconds)+" "+command2+" "+filename
+        print(cmd)
+        os.system(cmd)
     '''
-    开启摄像头
+    开启摄像头  A键拍照 B键录像 C键退出
     '''
-    def cameraOn(self):
+    def cameraOn(self,filename="camera"):
+        font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",20)
         while True:
             success,image = cap.read()
+            #cv2.imwrite('/home/pi/xgoEdu/camera/file.jpg',image)
             if not success:
                 print("Ignoring empty camera frame")
                 continue
@@ -857,39 +841,47 @@ class XGOEDU():
             image = cv2.merge((r,g,b))
             image = cv2.flip(image,1)
             imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
+            self.display.ShowImage(imgok)
             if cv2.waitKey(5) & 0xFF == 27:
                 XGOEDU.lcd_clear(self)
                 time.sleep(0.5)
                 break
+            if XGOEDU.xgoButton(self,"a"):
+                draw=ImageDraw.Draw(imgok)
+                cv2.imwrite(filename+'.jpg',image)
+                print('photo writed!')
+                draw.text((5,5),filename+'.jpg saved!',fill=(255,0,0),font=font)
+                self.display.ShowImage(imgok)
+                time.sleep(1)
+            if XGOEDU.xgoButton(self,"b"):
+                FPS=18
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                videoWrite = cv2.VideoWriter(filename+'.mp4', fourcc, FPS, (width,height))
+                while 1:
+                    ret, image = cap.read()
+                    if not ret:
+                        break
+                    videoWrite.write(image)
+                    b,g,r = cv2.split(image)
+                    image = cv2.merge((r,g,b))
+                    image = cv2.flip(image,1)
+                    imgok = Image.fromarray(image)
+                    draw=ImageDraw.Draw(imgok)
+                    draw.text((5,5),'recording',fill=(255,0,0),font=font)
+                    self.display.ShowImage(imgok)
+                    if cv2.waitKey(33) & 0xFF == ord('q'):
+                        break
+                    if XGOEDU.xgoButton(self,"b"):
+                        break
+                time.sleep(1)
+                videoWrite.release()
             if XGOEDU.xgoButton(self,"c"):
                 XGOEDU.lcd_clear(self)
                 time.sleep(0.5)
                 break
-    '''
-    开启摄像头并拍照
-    '''
-    def takePhoto(self):
-        while True:
-            success,image = cap.read()
-            if not success:
-                print("Ignoring empty camera frame")
-                continue
-            cv2.imshow('frame',image)
-            cv2.imwrite('/home/pi/xgoEdu/camera/file.jpg',image)
-            b,g,r = cv2.split(image)
-            image = cv2.merge((r,g,b))
-            image = cv2.flip(image,1)
-            imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
+
     '''
     手势识别
     '''
@@ -1062,7 +1054,7 @@ class XGOEDU():
         while True:
             t = time.time()
             hasFrame,image = cap.read()
-            image = cv.flip(image, 1)
+            image = cv2.flip(image, 1)
             frameFace, bboxes = getFaceBox(faceNet, image)
             if not bboxes:
                 print("No face Detected, Checking next frame")
@@ -1071,7 +1063,7 @@ class XGOEDU():
             for bbox in bboxes:
                 face = image[max(0, bbox[1] - padding):min(bbox[3] + padding, image.shape[0] - 1),
                        max(0, bbox[0] - padding):min(bbox[2] + padding, image.shape[1] - 1)]
-                blob = cv.dnn.blobFromImage(face, 1.0, (227, 227), MODEL_MEAN_VALUES, swapRB=False)
+                blob = cv2.dnn.blobFromImage(face, 1.0, (227, 227), MODEL_MEAN_VALUES, swapRB=False)
                 genderNet.setInput(blob)   
                 genderPreds = genderNet.forward()   
                 gender = genderList[genderPreds[0].argmax()]  
@@ -1079,7 +1071,7 @@ class XGOEDU():
                 agePreds = ageNet.forward()
                 age = ageList[agePreds[0].argmax()]
                 label = "{},{}".format(gender, age)
-                cv.putText(frameFace, label, (bbox[0], bbox[1] - 10), cv.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2,cv.LINE_AA)  
+                cv2.putText(frameFace, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2,cv2.LINE_AA)  
             b,g,r = cv2.split(frameFace)
             frameFace = cv2.merge((r,g,b))
             imgok = Image.fromarray(frameFace)
@@ -1123,7 +1115,7 @@ class hands():
         import copy
         image = cv_img
         debug_image = copy.deepcopy(image)
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.hands.process(image)
         hf=[]
         if results.multi_hand_landmarks is not None:
@@ -1158,7 +1150,7 @@ class hands():
                 palm_array = np.append(palm_array, landmark_point, axis=0)
             if index == 17:  # 小指：付け根
                 palm_array = np.append(palm_array, landmark_point, axis=0)
-        M = cv.moments(palm_array)
+        M = cv2.moments(palm_array)
         cx, cy = 0, 0
         if M['m00'] != 0:
             cx = int(M['m10'] / M['m00'])
@@ -1173,7 +1165,7 @@ class hands():
             landmark_y = min(int(landmark.y * image_height), image_height - 1)
             landmark_point = [np.array((landmark_x, landmark_y))]
             landmark_array = np.append(landmark_array, landmark_point, axis=0)
-        x, y, w, h = cv.boundingRect(landmark_array)
+        x, y, w, h = cv2.boundingRect(landmark_array)
         return [x, y, w, h]
 
     def dlandmarks(self,image, landmarks, handedness):
@@ -1369,7 +1361,7 @@ class face_detection():
 
     def run(self,cv_img):
         image = cv_img
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.face_detection.process(cv_img)
         face=[]
         if results.detections is not None:
