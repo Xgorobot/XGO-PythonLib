@@ -9,18 +9,16 @@ import spidev as SPI
 import LCD_2inch
 import RPi.GPIO as GPIO
 from PIL import Image,ImageDraw,ImageFont
-# from pyexpat import model
-# from keras.preprocessing import image
 import json
 from xgolib import XGO
+# from keras.preprocessing import image
 
 
 __versinon__ = '1.2.0'
-__last_modified__ = '2023/6/2'
+__last_modified__ = '2023/6/5'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-
 
 
 '''
@@ -61,13 +59,13 @@ def hand_pos(angle):
     # 小拇指角度
     f5 = angle[4]
     if f1 < 50 and (f2 >= 50 and (f3 >= 50 and (f4 >= 50 and f5 >= 50))):
-        pos = 'Good!'
+        pos = 'Good'
     elif f1 < 50 and (f2 >= 50 and (f3 < 50 and (f4 < 50 and f5 < 50))):
-        pos = 'Ok!'
+        pos = 'Ok'
     elif f1 < 50 and (f2 < 50 and (f3 >= 50 and (f4 >= 50 and f5 < 50))):
-        pos = 'Rock!'
+        pos = 'Rock'
     elif f1 >= 50 and (f2 >= 50 and (f3 >= 50 and (f4 >= 50 and f5 >= 50))):
-        pos = 'stone'
+        pos = 'Stone'
     elif f1 >= 50 and (f2 < 50 and (f3 >= 50 and (f4 >= 50 and f5 >= 50))):
         pos = '1'
     elif f1 >= 50 and (f2 < 50 and (f3 < 50 and (f4 < 50 and f5 >= 50))):
@@ -761,7 +759,7 @@ class XGOEDU():
     '''
     x1,y1为初始点坐标,content为内容
     '''
-    def lcd_text(self,x1,y1,content,color="WHITE",fontsize=15):
+    def lcd_text(self,x,y,content,color="WHITE",fontsize=15):
         if fontsize!=15:
             self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",fontsize)
         self.draw.text((x1,y1),content,fill=color,font=self.font)
@@ -774,20 +772,20 @@ class XGOEDU():
     d右下按键
     返回值 0未按下,1按下
     '''
-    def xgoButton(self,Button):
-        if Button == "a":
+    def xgoButton(self,button):
+        if button == "a":
             last_state_a =GPIO.input(self.key1)
             time.sleep(0.02)
             return(not last_state_a)
-        elif Button == "b":
+        elif button == "b":
             last_state_b=GPIO.input(self.key2)
             time.sleep(0.02)
             return(not last_state_b)
-        elif Button == "c":
+        elif button == "c":
             last_state_c=GPIO.input(self.key3)
             time.sleep(0.02)
             return(not last_state_c)
-        elif Button == "d":
+        elif button == "d":
             last_state_d=GPIO.input(self.key4)
             time.sleep(0.02)
             return(not last_state_d)
@@ -982,8 +980,8 @@ class XGOEDU():
     情绪识别
     '''
     def emotion(self,target="camera"):
+        ret=''
         if self.classifier==None:
-            from tensorflow.keras.utils import img_to_array
             from keras.models import load_model
             self.face_classifier=cv2.CascadeClassifier('/home/pi/xgoEdu/model/haarcascade_frontalface_default.xml')
             self.classifier = load_model('/home/pi/xgoEdu/model/EmotionDetectionModel.h5')
@@ -1002,14 +1000,14 @@ class XGOEDU():
             roi_gray=gray[y:y+h,x:x+w]
             roi_gray=cv2.resize(roi_gray,(48,48),interpolation=cv2.INTER_AREA)
             if np.sum([roi_gray])!=0:
+                from tensorflow.keras.utils import img_to_array
                 roi=roi_gray.astype('float')/255.0
                 roi=img_to_array(roi)
                 roi=np.expand_dims(roi,axis=0)
 
                 preds=self.classifier.predict(roi)[0]
                 label=class_labels[preds.argmax()]
-                print(label)
-                label_position=(x,y)
+                ret=(label,(x,y))
             else:
                 pass
         b,g,r = cv2.split(image)
@@ -1021,6 +1019,11 @@ class XGOEDU():
             pass
         imgok = Image.fromarray(image)
         self.display.ShowImage(imgok)
+        if ret=='':
+            return None
+        else:
+            return ret
+
     '''
     年纪及性别检测
     '''

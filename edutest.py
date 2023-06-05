@@ -30,11 +30,11 @@ import time
 # while 1:
 #     print(dog.face_detect("camera.jpg"))
 
-# while 1:
-#     print(dog.emotion())
-
 while 1:
-    print(dog.agesex("camera.jpg"))
+    print(dog.emotion("camera.jpg"))
+
+# while 1:
+#     print(dog.agesex("camera.jpg"))
 
 
 
