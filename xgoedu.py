@@ -1,5 +1,5 @@
 '''
-xgo图形化python库
+xgo图形化python库  edu库
 '''
 import cv2
 import numpy as np
@@ -11,49 +11,17 @@ import RPi.GPIO as GPIO
 from PIL import Image,ImageDraw,ImageFont
 # from pyexpat import model
 # from keras.preprocessing import image
-# from keras.models import load_model
 import json
 from xgolib import XGO
 
 
-__versinon__ = '1.1.1'
+__versinon__ = '1.2.0'
 __last_modified__ = '2023/6/2'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 
 
-# #情绪识别
-# face_classifier=cv2.CascadeClassifier('/home/pi/xgoEdu/model/haarcascade_frontalface_default.xml')
-# classifier = load_model('/home/pi/xgoEdu/model/EmotionDetectionModel.h5')
-# class_labels=['Angry','Happy','Neutral','Sad','Surprise']
-
-# #年纪及性别识别
-# # 网络模型  和  预训练模型
-# faceProto = "/home/pi/xgoEdu/model/opencv_face_detector.pbtxt"
-# faceModel = "/home/pi/xgoEdu/model/opencv_face_detector_uint8.pb"
-
-# ageProto = "/home/pi/xgoEdu/model/age_deploy.prototxt"
-# ageModel = "/home/pi/xgoEdu/model/age_net.caffemodel"
-
-# genderProto = "/home/pi/xgoEdu/model/gender_deploy.prototxt"
-# genderModel = "/home/pi/xgoEdu/model/gender_net.caffemodel"
-
-# # 模型均值
-# MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
-# ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
-# genderList = ['Male', 'Female']
-
-# # 加载网络
-# ageNet = cv2.dnn.readNet(ageModel, ageProto)
-# genderNet = cv2.dnn.readNet(genderModel, genderProto)
-# # 人脸检测的网络和模型
-# faceNet = cv2.dnn.readNet(faceModel, faceProto)
-# padding = 20
-
-cap =cv2.VideoCapture(0)
-cap.set(3,320)
-cap.set(4,240)
 
 '''
 人脸检测
@@ -730,16 +698,31 @@ class XGOEDU():
         self.display.Init()
         self.display.clear()
         self.splash = Image.new("RGB",(320,240),"black")
+        self.display.ShowImage(self.splash)
         self.draw = ImageDraw.Draw(self.splash)
         self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",15)
         self.key1=17
         self.key2=22
         self.key3=23
         self.key4=24
+        self.cap=None
+        self.hand=None
+        self.yolo=None
+        self.face=None
+        self.face_classifier=None
+        self.classifier=None
+        self.agesexmark=None
         GPIO.setup(self.key1,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key2,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key3,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key4,GPIO.IN,GPIO.PUD_UP)
+
+    def open_camera(self):
+        if self.cap==None:
+            self.cap =cv2.VideoCapture(0)
+            self.cap.set(3,320)
+            self.cap.set(4,240)
+
 
     #绘画直线
     '''
@@ -830,8 +813,9 @@ class XGOEDU():
     '''
     def cameraOn(self,filename="camera"):
         font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",20)
+        self.open_camera()
         while True:
-            success,image = cap.read()
+            success,image = self.cap.read()
             #cv2.imwrite('/home/pi/xgoEdu/camera/file.jpg',image)
             if not success:
                 print("Ignoring empty camera frame")
@@ -856,11 +840,11 @@ class XGOEDU():
             if XGOEDU.xgoButton(self,"b"):
                 FPS=18
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 videoWrite = cv2.VideoWriter(filename+'.mp4', fourcc, FPS, (width,height))
                 while 1:
-                    ret, image = cap.read()
+                    ret, image = self.cap.read()
                     if not ret:
                         break
                     videoWrite.write(image)
@@ -885,205 +869,210 @@ class XGOEDU():
     '''
     手势识别
     '''
-    def gestureRecognition(self):
-        hand = hands(0,2,0.6,0.5)
-        while True:
-            success,image = cap.read()
-            datas = hand.run(image)
-            cv2.imshow('OpenCV',image)
-            b,g,r = cv2.split(image)
-            image = cv2.merge((r,g,b))
-            image = cv2.flip(image,1)
-            if not success:
-                print("Ignoring empty camera frame")
-                continue
-            for data in datas:
-                pos_left = ''
-                pos_right = ''
-                rect = data['rect']
-                right_left = data['right_left']
-                center = data['center']
-                dlandmark = data['dlandmark']
-                hand_angle = data['hand_angle']
-                XGOEDU.rectangle(self,image,rect,"#33cc00",2)
-                #XGOEDU.text(self,image,right_left,center,2,"#cc0000",5)
-                if right_left == 'L':
-                    XGOEDU.text(self,image,hand_pos(hand_angle),(180,80),1.5,"#33cc00",2)
-                    pos_left = hand_pos(hand_angle)
-                elif right_left == 'R':
-                    XGOEDU.text(self,image,hand_pos(hand_angle),(50,80),1.5,"#ff0000",2)
-                    pos_right = hand_pos(hand_angle)
-                for i in dlandmark:
-                    XGOEDU.circle(self,image,i,3,"#ff9900",-1)
-            imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            #return(pos_left,pos_right)
+    def gestureRecognition(self,target="camera"):
+        ges = ''
+        if self.hand==None:
+            self.hand = hands(0,2,0.6,0.5)
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+        datas = self.hand.run(image)
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        #image = cv2.flip(image,1)
+        for data in datas:
+            rect = data['rect']
+            right_left = data['right_left']
+            center = data['center']
+            dlandmark = data['dlandmark']
+            hand_angle = data['hand_angle']
+            XGOEDU.rectangle(self,image,rect,"#33cc00",2)
+            #XGOEDU.text(self,image,right_left,center,2,"#cc0000",5)
+            if right_left == 'L':
+                XGOEDU.text(self,image,hand_pos(hand_angle),(180,80),1.5,"#33cc00",2)
+            elif right_left == 'R':
+                XGOEDU.text(self,image,hand_pos(hand_angle),(50,80),1.5,"#ff0000",2)
+            ges = hand_pos(hand_angle)
+            for i in dlandmark:
+                XGOEDU.circle(self,image,i,3,"#ff9900",-1)
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
+        if ges=='':
+            return None
+        else:
+            return(ges,center)
     '''
     yolo
     '''
-    def yoloFast(self):
-        yolo = yoloXgo('/home/pi/xgoEdu/model/Model.onnx',
-        ['person','bicycle','car','motorbike','aeroplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','sofa','pottedplant','bed','diningtable','toilet','tvmonitor','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush'],
-        [352,352],0.6)
-        while True:
-            success,image = cap.read()
-            datas = yolo.run(image)
-            cv2.imshow('OpenCV',image)
-            b,g,r = cv2.split(image)
-            image = cv2.merge((r,g,b))
-            image = cv2.flip(image,1)
-            if not success:
-                print("Ignoring empty camera frame")
-                continue
-            if datas:
-                for data in datas:
-                    XGOEDU.rectangle(self,image,data['xywh'],"#33cc00",2)
-                    xy= (data['xywh'][0], data['xywh'][1])
-                    XGOEDU.text(self,image,data['classes'],xy,1,"#ff0000",2)
-                    value_yolo = data['classes']
-            imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
-            #return(value_yolo)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
+    def yoloFast(self,target="camera"):
+        ret=''
+        self.open_camera()
+        if self.yolo==None:
+            self.yolo = yoloXgo('/home/pi/xgoEdu/model/Model.onnx',
+            ['person','bicycle','car','motorbike','aeroplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','sofa','pottedplant','bed','diningtable','toilet','tvmonitor','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush'],
+            [352,352],0.66)
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+        datas = self.yolo.run(image)
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        image = cv2.flip(image,1)
+        if datas:
+            for data in datas:
+                XGOEDU.rectangle(self,image,data['xywh'],"#33cc00",2)
+                xy= (data['xywh'][0], data['xywh'][1])
+                XGOEDU.text(self,image,data['classes'],xy,1,"#ff0000",2)
+                value_yolo = data['classes']
+                ret=(value_yolo,xy)
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
+        if ret=='':
+            return None
+        else:
+            return ret
+
     '''
     人脸坐标点检测
     '''
-    def face_detect(self):
-        face = face_detection(0.7)
-        while True:
-            success,image = cap.read()
-            datas = face.run(image)
-            b,g,r = cv2.split(image)
-            image = cv2.merge((r,g,b))
-            image = cv2.flip(image,1)
-            if not success:
-                print("Ignoring empty camera frame")
-                continue
-            for data in datas:
-                print(data)
-                lefteye = str(data['left_eye'])
-                righteye = str(data['right_eye'])
-                nose = str(data['nose'])
-                mouth = str(data['mouth'])
-                leftear = str(data['left_ear'])
-                rightear = str(data['right_ear'])
-                cv2.putText(image,'lefteye',(10,30),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),2)
-                cv2.putText(image,lefteye,(100,30),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),2)
-                cv2.putText(image,'righteye',(10,50),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
-                cv2.putText(image,righteye,(100,50),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
-                cv2.putText(image,'nose',(10,70),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
-                cv2.putText(image,nose,(100,70),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
-                cv2.putText(image,'leftear',(10,90),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,255,0),2)
-                cv2.putText(image,leftear,(100,90),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,255,0),2)
-                cv2.putText(image,'rightear',(10,110),cv2.FONT_HERSHEY_SIMPLEX,0.7,(200,0,200),2)
-                cv2.putText(image,rightear,(100,110),cv2.FONT_HERSHEY_SIMPLEX,0.7,(200,0,200),2)
-                XGOEDU.rectangle(self,image,data['rect'],"#33cc00",2)
-            #cv2.imshow('OpenCV',image)
-            imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
+    def face_detect(self,target="camera"):
+        ret=''
+        if self.face==None:
+            self.face = face_detection(0.7)
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+        datas = self.face.run(image)
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        image = cv2.flip(image,1)
+        for data in datas:
+            lefteye = str(data['left_eye'])
+            righteye = str(data['right_eye'])
+            nose = str(data['nose'])
+            mouth = str(data['mouth'])
+            leftear = str(data['left_ear'])
+            rightear = str(data['right_ear'])
+            cv2.putText(image,'lefteye',(10,30),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),2)
+            cv2.putText(image,lefteye,(100,30),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),2)
+            cv2.putText(image,'righteye',(10,50),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
+            cv2.putText(image,righteye,(100,50),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
+            cv2.putText(image,'nose',(10,70),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
+            cv2.putText(image,nose,(100,70),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
+            cv2.putText(image,'leftear',(10,90),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,255,0),2)
+            cv2.putText(image,leftear,(100,90),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,255,0),2)
+            cv2.putText(image,'rightear',(10,110),cv2.FONT_HERSHEY_SIMPLEX,0.7,(200,0,200),2)
+            cv2.putText(image,rightear,(100,110),cv2.FONT_HERSHEY_SIMPLEX,0.7,(200,0,200),2)
+            XGOEDU.rectangle(self,image,data['rect'],"#33cc00",2)
+            ret=data['rect']
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
+        if ret=='':
+            return None
+        else:
+            return ret
+
     '''
     情绪识别
     '''
-    def emotion(self):
-        from tensorflow.keras.utils import img_to_array
-        while True:
-            success,image=cap.read()
-            labels=[]
-            gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-            faces=face_classifier.detectMultiScale(gray,1.3,5)
-            label=''
-            for (x,y,w,h) in faces:
-                cv2.rectangle(image,(x,y),(x+w,y+h),(255,0,0),2)
-                roi_gray=gray[y:y+h,x:x+w]
-                roi_gray=cv2.resize(roi_gray,(48,48),interpolation=cv2.INTER_AREA)
-                if np.sum([roi_gray])!=0:
-                    roi=roi_gray.astype('float')/255.0
-                    roi=img_to_array(roi)
-                    roi=np.expand_dims(roi,axis=0)
+    def emotion(self,target="camera"):
+        if self.classifier==None:
+            from tensorflow.keras.utils import img_to_array
+            from keras.models import load_model
+            self.face_classifier=cv2.CascadeClassifier('/home/pi/xgoEdu/model/haarcascade_frontalface_default.xml')
+            self.classifier = load_model('/home/pi/xgoEdu/model/EmotionDetectionModel.h5')
+        class_labels=['Angry','Happy','Neutral','Sad','Surprise']
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+        labels=[]
+        gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+        faces=self.face_classifier.detectMultiScale(gray,1.3,5)
+        label=''
+        for (x,y,w,h) in faces:
+            cv2.rectangle(image,(x,y),(x+w,y+h),(255,0,0),2)
+            roi_gray=gray[y:y+h,x:x+w]
+            roi_gray=cv2.resize(roi_gray,(48,48),interpolation=cv2.INTER_AREA)
+            if np.sum([roi_gray])!=0:
+                roi=roi_gray.astype('float')/255.0
+                roi=img_to_array(roi)
+                roi=np.expand_dims(roi,axis=0)
 
-                    preds=classifier.predict(roi)[0]
-                    label=class_labels[preds.argmax()]
-                    print(label)
-                    label_position=(x,y)
-                else:
-                    pass
-            b,g,r = cv2.split(image)
-            image = cv2.merge((r,g,b))
-            image = cv2.flip(image, 1)
-            try:
-                cv2.putText(image,label,label_position,cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),3)
-            except:
+                preds=self.classifier.predict(roi)[0]
+                label=class_labels[preds.argmax()]
+                print(label)
+                label_position=(x,y)
+            else:
                 pass
-            imgok = Image.fromarray(image)
-            display.ShowImage(imgok)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        image = cv2.flip(image, 1)
+        try:
+            cv2.putText(image,label,label_position,cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),3)
+        except:
+            pass
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
     '''
     年纪及性别检测
     '''
-    def agesex(self):
-        while True:
-            t = time.time()
-            hasFrame,image = cap.read()
-            image = cv2.flip(image, 1)
-            frameFace, bboxes = getFaceBox(faceNet, image)
-            if not bboxes:
-                print("No face Detected, Checking next frame")
-            gender=''
-            age=''
-            for bbox in bboxes:
-                face = image[max(0, bbox[1] - padding):min(bbox[3] + padding, image.shape[0] - 1),
-                       max(0, bbox[0] - padding):min(bbox[2] + padding, image.shape[1] - 1)]
-                blob = cv2.dnn.blobFromImage(face, 1.0, (227, 227), MODEL_MEAN_VALUES, swapRB=False)
-                genderNet.setInput(blob)   
-                genderPreds = genderNet.forward()   
-                gender = genderList[genderPreds[0].argmax()]  
-                ageNet.setInput(blob)
-                agePreds = ageNet.forward()
-                age = ageList[agePreds[0].argmax()]
-                label = "{},{}".format(gender, age)
-                cv2.putText(frameFace, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2,cv2.LINE_AA)  
-            b,g,r = cv2.split(frameFace)
-            frameFace = cv2.merge((r,g,b))
-            imgok = Image.fromarray(frameFace)
-            display.ShowImage(imgok)
-            if cv2.waitKey(5) & 0xFF == 27:
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
-            if XGOEDU.xgoButton(self,"c"):
-                XGOEDU.lcd_clear(self)
-                time.sleep(0.5)
-                break
+    def agesex(self,target="camera"):
+        ret=''
+        MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
+        ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+        genderList = ['Male', 'Female']
+        padding = 20
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+        if self.agesexmark==None:
+            faceProto = "/home/pi/xgoEdu/model/opencv_face_detector.pbtxt"
+            faceModel = "/home/pi/xgoEdu/model/opencv_face_detector_uint8.pb"
+            ageProto = "/home/pi/xgoEdu/model/age_deploy.prototxt"
+            ageModel = "/home/pi/xgoEdu/model/age_net.caffemodel"
+            genderProto = "/home/pi/xgoEdu/model/gender_deploy.prototxt"
+            genderModel = "/home/pi/xgoEdu/model/gender_net.caffemodel"
+            self.ageNet = cv2.dnn.readNet(ageModel, ageProto)
+            self.genderNet = cv2.dnn.readNet(genderModel, genderProto)
+            self.faceNet = cv2.dnn.readNet(faceModel, faceProto)
+            self.agesexmark=True
+
+        image = cv2.flip(image, 1)
+        frameFace, bboxes = getFaceBox(self.faceNet, image)
+        gender=''
+        age=''
+        for bbox in bboxes:
+            face = image[max(0, bbox[1] - padding):min(bbox[3] + padding, image.shape[0] - 1),
+                    max(0, bbox[0] - padding):min(bbox[2] + padding, image.shape[1] - 1)]
+            blob = cv2.dnn.blobFromImage(face, 1.0, (227, 227), MODEL_MEAN_VALUES, swapRB=False)
+            self.genderNet.setInput(blob)   
+            genderPreds = self.genderNet.forward()   
+            gender = genderList[genderPreds[0].argmax()]  
+            self.ageNet.setInput(blob)
+            agePreds = self.ageNet.forward()
+            age = ageList[agePreds[0].argmax()]
+            label = "{},{}".format(gender, age)
+            cv2.putText(frameFace, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2,cv2.LINE_AA)  
+            ret=(gender,age,(bbox[0], bbox[1]))
+        b,g,r = cv2.split(frameFace)
+        frameFace = cv2.merge((r,g,b))
+        imgok = Image.fromarray(frameFace)
+        self.display.ShowImage(imgok)
+        if ret=='':
+            return None
+        else:
+            return ret
+
     
     def rectangle(self,frame,z,colors,size):
         frame=cv2.rectangle(frame,(int(z[0]),int(z[1])),(int(z[0]+z[2]),int(z[1]+z[3])),color(colors),size)

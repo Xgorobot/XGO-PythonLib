@@ -19,7 +19,22 @@ import time
 
 # dog.xgoAudioRecord("test.wav",5)
 
-dog.cameraOn()
+# dog.cameraOn()
+
+# while 1:
+#     print(dog.gestureRecognition())
+
+# while 1:
+#     print(dog.yoloFast("camera.jpg"))
+    
+# while 1:
+#     print(dog.face_detect("camera.jpg"))
+
+# while 1:
+#     print(dog.emotion())
+
+while 1:
+    print(dog.agesex("camera.jpg"))
 
 
 
