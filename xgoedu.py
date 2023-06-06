@@ -762,7 +762,7 @@ class XGOEDU():
     def lcd_text(self,x,y,content,color="WHITE",fontsize=15):
         if fontsize!=15:
             self.font = ImageFont.truetype("/home/pi/xgoEdu/Font/msyh.ttc",fontsize)
-        self.draw.text((x1,y1),content,fill=color,font=self.font)
+        self.draw.text((x,y),content,fill=color,font=self.font)
         self.display.ShowImage(self.splash)
     #key_value
     '''
@@ -836,7 +836,7 @@ class XGOEDU():
                 self.display.ShowImage(imgok)
                 time.sleep(1)
             if XGOEDU.xgoButton(self,"b"):
-                FPS=18
+                FPS=15
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -946,10 +946,10 @@ class XGOEDU():
             success,image = self.cap.read()
         else:
             image=np.array(Image.open(target))
-        datas = self.face.run(image)
         b,g,r = cv2.split(image)
         image = cv2.merge((r,g,b))
         image = cv2.flip(image,1)
+        datas = self.face.run(image)
         for data in datas:
             lefteye = str(data['left_eye'])
             righteye = str(data['right_eye'])
