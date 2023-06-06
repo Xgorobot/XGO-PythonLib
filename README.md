@@ -1,4 +1,9 @@
 # XGO-PythonLib
-xgolib is the motion control interface of XGO, and xgoedu is the AI module peripheral call and simple AI function interface
-xgolib V1.20 
-Concrete example https://www.yuque.com/luwudynamics
+
+XGO2 robot can be developed using the Python language.The motion,pose,coordinates,gripper and servo of the XGO2 can be controlled via Python. The detailed instructions for use of the library are as follows.
+
+PythonLib included xgolib.py xgoedu.py xgoadvance.py.
+
+[Luwu Dynamics · WIKI](https://www.yuque.com/luwudynamics)
+
+[PythonLib-WIKI](https://www.yuque.com/luwudynamics/cn/mxkaodwpo2h5zmvw)
