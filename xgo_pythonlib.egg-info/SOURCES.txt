@@ -1,0 +1,12 @@
+README.md
+setup.py
+xgo/__init__.py
+xgo/xgoedu.py
+xgo/xgolib.py
+xgo/screen/LCD_2inch.py
+xgo/screen/__init__.py
+xgo/screen/lcdconfig.py
+xgo_pythonlib.egg-info/PKG-INFO
+xgo_pythonlib.egg-info/SOURCES.txt
+xgo_pythonlib.egg-info/dependency_links.txt
+xgo_pythonlib.egg-info/top_level.txt
