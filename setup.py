@@ -7,10 +7,10 @@ from setuptools import find_packages, setup, Command
 NAME = 'xgo-pythonlib'
 DESCRIPTION = 'PythonLib for XGO2-DOG'
 URL = 'https://github.com/Xgorobot/XGO-PythonLib'
-EMAIL = '1091329318@qq.com'
-AUTHOR = 'jd3096'
+EMAIL = 'hello@xgorobot.com'
+AUTHOR = 'luwudynamics'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.0.8'
+VERSION = '0.1.2'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -96,9 +96,6 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     packages=find_packages(),
-    package_data={
-        'xgo':['Font/msyh.ttc']
-    },
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
 

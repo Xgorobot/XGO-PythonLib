@@ -6,7 +6,7 @@ import numpy as np
 import math
 import os,sys,time
 import spidev as SPI
-import xgo.screen.LCD_2inch as LCD_2inch
+import xgoscreen.LCD_2inch as LCD_2inch
 import RPi.GPIO as GPIO
 from PIL import Image,ImageDraw,ImageFont
 import json

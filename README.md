@@ -19,7 +19,7 @@ PythonLib included xgolib.py xgoedu.py xgoadvance.py.
 3 Run this command:
 
 ```
-pip install xgo-pythonlib
+pip install --upgrade xgo-pythonlib
 ```
 
 ## Examples
@@ -27,7 +27,7 @@ pip install xgo-pythonlib
 Perform gesture recognition on the current camera and press the "c" key to exit.
 
 ```python
-from xgo.xgoedu import XGOEDU 
+from xgoedu import XGOEDU 
 edu = XGOEDU()
 
 while True:
@@ -39,5 +39,5 @@ while True:
 
 
 
-### Lastest Verion:0.0.8
+### Lastest Verion:0.1.2
 

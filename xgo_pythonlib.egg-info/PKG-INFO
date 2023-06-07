@@ -1,10 +1,10 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.0.8
+Version: 0.1.2
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
-Author: jd3096
-Author-email: 1091329318@qq.com
+Author: luwudynamics
+Author-email: hello@xgorobot.com
 License: MIT
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python
@@ -30,11 +30,32 @@ PythonLib included xgolib.py xgoedu.py xgoadvance.py.
 
 ## Install instructions 
 
+1 Burn the official 0512 img image 
+
+2 Copy all files from the "model" directory to `\home\pi\model`
+
+3 Run this command:
+
 ```
 pip install xgo-pythonlib
 ```
 
-All model files in model folder needs to be copyed to /hone/pi/model
+## Examples
 
-img version 0512
+Perform gesture recognition on the current camera and press the "c" key to exit.
+
+```python
+from xgoedu import XGOEDU 
+edu = XGOEDU()
+
+while True:
+    result=edu.gestureRecognition()  
+    print(result)
+    if edu.xgoButton("c"):  
+        break
+```
+
+
+
+### Lastest Verion:0.0.8
 
