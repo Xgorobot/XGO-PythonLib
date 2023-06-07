@@ -36,8 +36,9 @@ while True:
     if edu.xgoButton("c"):  
         break
 ```
+xgolib library example
+```python
 
-
-
+```
 ### Lastest Verion:0.0.8
 
