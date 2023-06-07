@@ -38,7 +38,10 @@ while True:
 ```
 xgolib library example
 ```python
+from xgo.xgolib import XGO
+dog = XGO('/dev/ttyAMA0')
 
+dog.action(1)
 ```
 ### Lastest Verion:0.0.8
 
