@@ -36,8 +36,10 @@ while True:
     if edu.xgoButton("c"):  
         break
 ```
-
-
-
+xgolib library example
+```python
+from xgolib import XGO
+dog = XGO('/dev/ttyAMA0')
+dog.action(1)
+```
 ### Lastest Verion:0.1.2
-
