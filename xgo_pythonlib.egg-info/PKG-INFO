@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.1.2
+Version: 0.1.3
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -37,7 +37,7 @@ PythonLib included xgolib.py xgoedu.py xgoadvance.py.
 3 Run this command:
 
 ```
-pip install xgo-pythonlib
+pip install --upgrade xgo-pythonlib
 ```
 
 ## Examples
@@ -54,8 +54,10 @@ while True:
     if edu.xgoButton("c"):  
         break
 ```
-
-
-
-### Lastest Verion:0.0.8
-
+xgolib library example
+```python
+from xgolib import XGO
+dog = XGO('/dev/ttyAMA0')
+dog.action(1)
+```
+### Lastest Verion:0.1.2

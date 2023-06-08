@@ -1,14 +1,15 @@
 import serial
 import struct
 import time
-
-__version__ = '1.2.0'
-__last_modified__ = '2023/2/16'
+import math
+__version__ = '1.3.0'
+__last_modified__ = '2023/5/25'
 
 """
 XGOorder 用来存放命令地址和对应数据
 XGOorder is used to store the command address and corresponding data
 """
+
 XGOorder = {
     "BATTERY": [0x01, 100],
     "PERFORM": [0x03, 0],
@@ -37,6 +38,7 @@ XGOorder = {
     "ROLL": [0x62, 0],
     "PITCH": [0x63, 0],
     "YAW": [0x64, 0],
+    "3V3": [0x66, 1],
     "CLAW": [0x71, 0],
     "ARM_MODE": [0x72, 0],
     "ARM_X": [0x73, 0],
@@ -47,19 +49,7 @@ XGOorder = {
 XGOparam 用来存放机器狗的参数限制范围
 Xgoparam is used to store the parameter limit range of the robot dog
 """
-
-XGOparam = {
-    "TRANSLATION_LIMIT": [35, 18, [75, 115]],  # X Y Z 平移范围
-    "ATTITUDE_LIMIT": [20, 15, 11],  # Roll Pitch Yaw 姿态范围
-    "LEG_LIMIT": [35, 18, [75, 115]],  # 腿长范围
-    "MOTOR_LIMIT": [[-73, 57], [-66, 93], [-31, 31], [-30, 30], [-60, 70], [-90, 105]],  # 下 中 上 舵机范围
-    "PERIOD_LIMIT": [[1.5, 8]],
-    "MARK_TIME_LIMIT": [10, 35],  # 原地踏步高度范围
-    "VX_LIMIT": 25,  # X速度范围
-    "VY_LIMIT": 18,  # Y速度范围
-    "VYAW_LIMIT": 100  # 旋转速度范围
-}
-
+XGOparam={}
 
 def search(data, list):
     for i in range(len(list)):
@@ -68,42 +58,27 @@ def search(data, list):
     return -1
 
 
-def conver2u8(data, limit, mode=0):
+def conver2u8(data, limit, min_value=0):
     """
     将实际参数转化为0到255的单字节数据
     Convert the actual parameters to single byte data from 0 to 255
     """
-    max = 0xff
-    if mode == 0:
-        min = 0x00
-    else:
-        min = 0x01
-
+    max_value = 0xff
     if not isinstance(limit, list):
-        if data >= limit:
-            return max
-        elif data <= -limit:
-            return min
-        else:
-            return int(128 + 128 * data / limit)
+        limit = [-limit, limit]
+    if data >= limit[1]:
+        return max_value
+    elif data <= limit[0]:
+        return min_value
     else:
-        limitmin = limit[0]
-        limitmax = limit[1]
-        if data >= limitmax:
-            return max
-        elif data <= limitmin:
-            return min
-        else:
-            return int(255 / (limitmax - limitmin) * (data - limitmin))
+        return int(255 / (limit[1] - limit[0]) * (data - limit[0]))
 
 
 def conver2float(data, limit):
     if not isinstance(limit, list):
         return (data - 128.0) / 255.0 * limit
     else:
-        limitmin = limit[0]
-        limitmax = limit[1]
-        return data / 255.0 * (limitmax - limitmin) + limitmin
+        return data / 255.0 * (limit[1] - limit[0]) + limit[0]
 
 
 def Byte2Float(rawdata):
@@ -120,8 +95,8 @@ def changePara(version):
     global XGOparam
     if version == 'xgomini':
         XGOparam = {
-            "TRANSLATION_LIMIT": [35, 18, [75, 115]],  # X Y Z 平移范围
-            "ATTITUDE_LIMIT": [20, 15, 11],  # Roll Pitch Yaw 姿态范围
+            "TRANSLATION_LIMIT": [35, 19.5, [75, 120]],  # X Y Z 平移范围
+            "ATTITUDE_LIMIT": [20, 22, 16],  # Roll Pitch Yaw 姿态范围
             "LEG_LIMIT": [35, 18, [75, 115]],  # 腿长范围
             "MOTOR_LIMIT": [[-73, 57], [-66, 93], [-31, 31], [-65, 65], [-85, 50], [-75, 90]],  # 下 中 上 舵机范围
             "PERIOD_LIMIT": [[1.5, 8]],
@@ -153,8 +128,9 @@ class XGO():
     communication interface between the upper computer and the machine dog
     """
 
-    def __init__(self, port, baud=115200, version='xgomini'):
-        self.ser = serial.Serial("/dev/ttyAMA0", baud, timeout=0.5)
+    def __init__(self, port, baud=115200,version="xgomini", verbose=False):
+        self.verbose = verbose
+        self.ser = serial.Serial(port, baud, timeout=0.5)
         self.ser.flushOutput()
         self.ser.flushInput()
         self.port = port
@@ -163,7 +139,17 @@ class XGO():
         self.rx_ADDR = 0
         self.rx_LEN = 0
         self.rx_data = bytearray(50)
-        changePara(version)
+        self.version = self.read_firmware()
+        if self.version[0] == 'M':
+            changePara('xgomini')
+        elif self.version[0] == 'L':
+            changePara('xgolite')
+        else:
+            print("ERROR!Can't read firmware version!")
+        self.mintime = 0.65
+        self.reset()
+        time.sleep(0.5)
+        self.init_yaw = self.read_yaw()
         pass
 
     def __send(self, key, index=1, len=1):
@@ -180,17 +166,18 @@ class XGO():
         tx.extend(value)
         tx.extend([sum_data, 0x00, 0xAA])
         self.ser.write(tx)
-        print("tx_data: ", tx)
+        if self.verbose:
+            print("tx_data: ", tx)
 
     def __read(self, addr, read_len=1):
         mode = 0x02
         sum_data = (0x09 + mode + addr + read_len) % 256
         sum_data = 255 - sum_data
         tx = [0x55, 0x00, 0x09, mode, addr, read_len, sum_data, 0x00, 0xAA]
-        time.sleep(0.1)
         self.ser.flushInput()
         self.ser.write(tx)
-        #print("tx_data: ", tx)
+        if self.verbose:
+            print("tx_data: ", tx)
 
     def __change_baud(self, baud):
         self.ser.flush()
@@ -241,6 +228,41 @@ class XGO():
     def turnright(self, step):
         self.turn(-abs(step))
 
+    def move_by(self, distance, vx, vy, k, mintime):
+        runtime = k * abs(distance) + mintime
+        self.move_x(math.copysign(vx, distance))
+        self.move_y(math.copysign(vy, distance))
+        time.sleep(runtime)
+        self.move_x(0)
+        self.move_y(0)
+        time.sleep(0.2)
+
+    def move_x_by(self, distance, vx=18, k=0.035, mintime=0.55):
+        self.move_by(distance, vx, 0, k, mintime)
+        pass
+
+    def move_y_by(self, distance, vy=18, k=0.0373, mintime=0.5):
+        self.move_by(distance, 0, vy, k, mintime)
+        pass
+
+    def turn_by(self, theta, mintime, vyaw=16, k=0.08):
+        runtime = abs(theta) * k + mintime
+        self.turn(math.copysign(vyaw, theta))
+        time.sleep(runtime)
+        self.turn(0)
+        pass
+
+
+    def turn_to(self, theta, vyaw=60, emax=10):
+        cur_yaw = self.read_yaw()
+        des_yaw = self.init_yaw + theta
+        while abs(des_yaw - cur_yaw) >= emax:
+            self.turn(math.copysign(vyaw, des_yaw - cur_yaw))
+            cur_yaw = self.read_yaw()
+        self.turn(0)
+        time.sleep(0.2)
+        pass
+
     def __translation(self, direction, data):
         index = search(direction, ['x', 'y', 'z'])
         if index == -1:
@@ -254,8 +276,8 @@ class XGO():
         使机器狗足端不动，身体进行三轴平动
         Keep the robot's feet stationary and the body makes three-axis translation
         """
-        if (isinstance(direction, list)):
-            if (len(direction) != len(data)):
+        if isinstance(direction, list):
+            if len(direction) != len(data):
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(data)):
@@ -276,8 +298,8 @@ class XGO():
         使机器狗足端不动，身体进行三轴转动
         Keep the robot's feet stationary and the body makes three-axis rotation
         """
-        if (isinstance(direction, list)):
-            if (len(direction) != len(data)):
+        if isinstance(direction, list):
+            if len(direction) != len(data):
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(data)):
@@ -427,8 +449,8 @@ class XGO():
         使机器狗周期性平动
         Make the robot translate periodically
         """
-        if (isinstance(direction, list)):
-            if (len(direction) != len(period)):
+        if isinstance(direction, list):
+            if len(direction) != len(period):
                 print("ERROR!The length of direction and data don't match!")
                 return
             for i in range(len(period)):
@@ -647,7 +669,8 @@ class XGO():
                     elif self.rx_FLAG == 8:
                         if num == 0xAA:
                             self.rx_FLAG = 0
-                            print("rx_data: ", rx_msg)
+                            if self.verbose:
+                                print("rx_data: ", rx_msg)
                             return True
                         else:
                             self.rx_FLAG = 0
@@ -655,6 +678,9 @@ class XGO():
                             self.rx_ADDR = 0
                             self.rx_LEN = 0
         return False
+
+    def set_move_mintime(self, mintime):
+        self.mintime = mintime
 
     def upgrade(self, filename):
         """
@@ -737,3 +763,27 @@ class XGO():
             return
         XGOorder["CLAW"][1] = claw_pos
         self.__send("CLAW")
+
+    def btRename(self, name):
+        length = len(name)
+        if not isinstance(name, str):
+            print("Wrong type!")
+            return
+
+        if length > 20:
+            print("The length of the name needs to be less than 20")
+            return
+
+        if not name.isalnum():
+            print("The name can only contain numbers and letters")
+            return
+
+        XGOorder["BT_NAME"] = [0x13]
+        for c in list(name):
+            if ord(c) > 255:
+                print("The name can only contain numbers and letters")
+                return
+            else:
+                XGOorder["BT_NAME"].append(ord(c))
+        print(XGOorder["BT_NAME"])
+        self.__send("BT_NAME", len=length)

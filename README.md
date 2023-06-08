@@ -42,4 +42,11 @@ from xgolib import XGO
 dog = XGO('/dev/ttyAMA0')
 dog.action(1)
 ```
-### Lastest Verion:0.1.2
+### Lastest Verion:0.1.3
+
+### xgolib_version=1.3.0
+
+### xgoedu_version=1.2.1
+
+
+
