@@ -12,7 +12,7 @@ PythonLib included xgolib.py xgoedu.py xgoadvance.py.
 
 ## Install instructions 
 
-1 Burn the official 0512 img image 
+1 Burn the official 0608 img image 
 
 2 Copy all files from the "model" directory to `\home\pi\model`
 
