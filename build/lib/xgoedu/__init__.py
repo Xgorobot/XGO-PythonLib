@@ -10,15 +10,19 @@ import xgoscreen.LCD_2inch as LCD_2inch
 import RPi.GPIO as GPIO
 from PIL import Image,ImageDraw,ImageFont
 import json
-#from xgolib import XGO
+import threading
+# from xgolib import XGO
 # from keras.preprocessing import image
+# import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.1'
-__last_modified__ = '2023/6/7'
+__versinon__ = '1.2.2'
+__last_modified__ = '2023/6/11'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
+
+camera_still=False
 
 
 '''
@@ -94,6 +98,7 @@ def color(value):
     return (a3, a2, a1)
 
 
+
 class XGOEDU():
     def __init__(self):
         self.display = LCD_2inch.LCD_2inch()
@@ -114,6 +119,7 @@ class XGOEDU():
         self.face_classifier=None
         self.classifier=None
         self.agesexmark=None
+        self.camera_still=False
         GPIO.setup(self.key1,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key2,GPIO.IN,GPIO.PUD_UP)
         GPIO.setup(self.key3,GPIO.IN,GPIO.PUD_UP)
@@ -199,21 +205,124 @@ class XGOEDU():
     '''
     def xgoSpeaker(self,filename):
         os.system("mplayer"+" "+filename)
+
+    def xgoVedioAudio(self,filename):
+        time.sleep(0.1)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
+        cmd="sudo mplayer "+filename+" -novideo"
+        os.system(cmd)
+
+    def xgoVedio(self,filename):
+        x=threading.Thread(target=self.xgoVedioAudio,args=(filename,))
+        x.start()
+        global counter
+        video=cv2.VideoCapture(filename)
+        fps = video.get(cv2.CAP_PROP_FPS) 
+        print(fps)
+        init_time=time.time()
+        counter=0
+        while True:
+            grabbed, dst = video.read()
+            b,g,r = cv2.split(dst)
+            dst = cv2.merge((r,g,b))
+            imgok = Image.fromarray(dst)
+            self.display.ShowImage(imgok)
+            #强制卡帧数 实测帧数不要超过20贞 否则显示跟不上 但是20贞转换经常有问题 所以建议直接15贞
+            counter += 1
+            ctime=time.time()- init_time
+            if ctime != 0:
+                qtime=counter/fps-ctime
+                #print(qtime)
+                if qtime>0:
+                    time.sleep(qtime)
+            if not grabbed:
+                break
+        
     #audio_record
     '''
     filename 文件名 字符串
     seconds 录制时间S 字符串
     '''
-    def xgoAudioRecord(self,filename="record.wav",seconds=5):
+    def xgoAudioRecord(self,filename="record",seconds=5):
         command1 = "sudo arecord -d"
         command2 = "-f S32_LE -r 16000 -c 1 -t wav"
-        cmd=command1+" "+str(seconds)+" "+command2+" "+filename
+        cmd=command1+" "+str(seconds)+" "+command2+" "+filename+".wav"
         print(cmd)
         os.system(cmd)
+
+    def cameraOn(self,switch):
+        global camera_still
+        if switch:
+            self.open_camera()
+            self.camera_still=True
+            t = threading.Thread(target=self.camera_mode)  
+            t.start() 
+        else:
+            self.camera_still=False
+            time.sleep(0.5)
+            splash = Image.new("RGB",(320,240),"black")
+            self.display.ShowImage(splash)
+
+    def camera_mode(self):
+        self.camera_still=True
+        while 1:
+            success,image = self.cap.read()
+            b,g,r = cv2.split(image)
+            image = cv2.merge((r,g,b))
+            image = cv2.flip(image,1)
+            imgok = Image.fromarray(image)
+            self.display.ShowImage(imgok)
+            if not self.camera_still:
+                break
+
+    def xgoVedioRecord(self,filename="record",seconds=5):
+        self.camera_still=False
+        time.sleep(0.6)
+        self.open_camera()
+        FPS=15
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        videoWrite = cv2.VideoWriter(filename+'.mp4', fourcc, FPS, (width,height))
+        starttime=time.time()
+        while 1:
+            print('recording...')
+            ret, image = self.cap.read()
+            if not ret:
+                break
+            videoWrite.write(image)
+            b,g,r = cv2.split(image)
+            image = cv2.merge((r,g,b))
+            image = cv2.flip(image,1)
+            imgok = Image.fromarray(image)
+            self.display.ShowImage(imgok)
+            if time.time()-starttime>seconds:
+                break
+        print('recording done')
+        self.cameraOn(True)
+        videoWrite.release()
+
+    def xgoTakePhoto(self,filename="photo.jpg"):
+        self.camera_still=False
+        time.sleep(0.6)
+        self.open_camera()
+        success,image = self.cap.read()
+        if not success:
+            print("Ignoring empty camera frame")
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        image = cv2.flip(image,1)
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
+        cv2.imwrite(filename+'.jpg',image)
+        print('photo writed!')
+        time.sleep(0.7)
+        self.cameraOn(True)
+
+
     '''
     开启摄像头  A键拍照 B键录像 C键退出
     '''
-    def cameraOn(self,filename="camera"):
+    def camera(self,filename="camera"):
         font = ImageFont.truetype("/home/pi/model/msyh.ttc",20)
         self.open_camera()
         while True:
