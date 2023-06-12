@@ -28,12 +28,12 @@ Perform gesture recognition on the current camera and press the "c" key to exit.
 
 ```python
 from xgoedu import XGOEDU 
-edu = XGOEDU()
+XGO_edu = XGOEDU()
 
 while True:
-    result=edu.gestureRecognition()  
+    result=XGO_edu.gestureRecognition()  
     print(result)
-    if edu.xgoButton("c"):  
+    if XGO_edu.xgoButton("c"):  
         break
 ```
 xgolib library example
