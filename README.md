@@ -39,7 +39,7 @@ while True:
 xgolib library example
 ```python
 from xgolib import XGO
-dog = XGO('/dev/ttyAMA0')
+dog = XGO('xgomini')
 dog.action(1)
 ```
 ### Lastest Verion:0.1.6
