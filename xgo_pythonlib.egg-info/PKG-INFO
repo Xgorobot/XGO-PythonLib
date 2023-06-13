@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.1.4
+Version: 0.1.6
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -30,7 +30,7 @@ PythonLib included xgolib.py xgoedu.py xgoadvance.py.
 
 ## Install instructions 
 
-1 Burn the official 0608 img image 
+1 Burn the official 0609 img image 
 
 2 Copy all files from the "model" directory to `\home\pi\model`
 
@@ -60,11 +60,11 @@ from xgolib import XGO
 dog = XGO('/dev/ttyAMA0')
 dog.action(1)
 ```
-### Lastest Verion:0.1.3
+### Lastest Verion:0.1.6
 
-### xgolib_version=1.3.0
+### xgolib_version=1.3.1
 
-### xgoedu_version=1.2.1
+### xgoedu_version=1.2.3
 
 
 

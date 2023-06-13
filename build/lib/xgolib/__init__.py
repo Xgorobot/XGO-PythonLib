@@ -2,8 +2,8 @@ import serial
 import struct
 import time
 import math
-__version__ = '1.3.0'
-__last_modified__ = '2023/5/25'
+__version__ = '1.3.1'
+__last_modified__ = '2023/6/13'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -130,7 +130,7 @@ class XGO():
 
     def __init__(self, port, baud=115200,version="xgomini", verbose=False):
         self.verbose = verbose
-        self.ser = serial.Serial(port, baud, timeout=0.5)
+        self.ser = serial.Serial("/dev/ttyAMA0", baud, timeout=0.5)
         self.ser.flushOutput()
         self.ser.flushInput()
         self.port = port

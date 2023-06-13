@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.2'
-__last_modified__ = '2023/6/11'
+__versinon__ = '1.2.3'
+__last_modified__ = '2023/6/12'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -162,7 +162,8 @@ class XGOEDU():
     图片的大小为320*240,jpg格式
     '''
     def lcd_picture(self,filename,x=0,y=0):
-        image = Image.open(filename)
+        path="/home/pi/xgoPictures/"
+        image = Image.open(path+filename)
         self.splash.paste(image,(x,y))
         self.display.ShowImage(self.splash)
     #显示文字
@@ -204,18 +205,21 @@ class XGOEDU():
     filename 文件名 字符串
     '''
     def xgoSpeaker(self,filename):
-        os.system("mplayer"+" "+filename)
+        path="/home/pi/xgoMusic/"
+        os.system("mplayer"+" "+path+filename)
 
     def xgoVedioAudio(self,filename):
-        time.sleep(0.1)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
-        cmd="sudo mplayer "+filename+" -novideo"
+        path="/home/pi/xgoVideos/"
+        time.sleep(0.2)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
+        cmd="sudo mplayer "+path+filename+" -novideo"
         os.system(cmd)
 
     def xgoVedio(self,filename):
+        path="/home/pi/xgoVideos/"
         x=threading.Thread(target=self.xgoVedioAudio,args=(filename,))
         x.start()
         global counter
-        video=cv2.VideoCapture(filename)
+        video=cv2.VideoCapture(path+filename)
         fps = video.get(cv2.CAP_PROP_FPS) 
         print(fps)
         init_time=time.time()
@@ -243,13 +247,14 @@ class XGOEDU():
     seconds 录制时间S 字符串
     '''
     def xgoAudioRecord(self,filename="record",seconds=5):
+        path="/home/pi/xgoMusic/"
         command1 = "sudo arecord -d"
         command2 = "-f S32_LE -r 16000 -c 1 -t wav"
-        cmd=command1+" "+str(seconds)+" "+command2+" "+filename+".wav"
+        cmd=command1+" "+str(seconds)+" "+command2+" "+path+filename+".wav"
         print(cmd)
         os.system(cmd)
 
-    def cameraOn(self,switch):
+    def xgoCamera(self,switch):
         global camera_still
         if switch:
             self.open_camera()
@@ -275,6 +280,7 @@ class XGOEDU():
                 break
 
     def xgoVedioRecord(self,filename="record",seconds=5):
+        path="/home/pi/xgoVideos/"
         self.camera_still=False
         time.sleep(0.6)
         self.open_camera()
@@ -282,7 +288,7 @@ class XGOEDU():
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        videoWrite = cv2.VideoWriter(filename+'.mp4', fourcc, FPS, (width,height))
+        videoWrite = cv2.VideoWriter(path+filename+'.mp4', fourcc, FPS, (width,height))
         starttime=time.time()
         while 1:
             print('recording...')
@@ -298,10 +304,11 @@ class XGOEDU():
             if time.time()-starttime>seconds:
                 break
         print('recording done')
-        self.cameraOn(True)
+        self.xgoCamera(True)
         videoWrite.release()
 
-    def xgoTakePhoto(self,filename="photo.jpg"):
+    def xgoTakePhoto(self,filename="photo"):
+        path="/home/pi/xgoPictures/"
         self.camera_still=False
         time.sleep(0.6)
         self.open_camera()
@@ -313,10 +320,10 @@ class XGOEDU():
         image = cv2.flip(image,1)
         imgok = Image.fromarray(image)
         self.display.ShowImage(imgok)
-        cv2.imwrite(filename+'.jpg',image)
+        cv2.imwrite(path+filename+'.jpg',image)
         print('photo writed!')
         time.sleep(0.7)
-        self.cameraOn(True)
+        self.xgoCamera(True)
 
 
     '''
