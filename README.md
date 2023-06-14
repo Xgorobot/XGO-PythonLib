@@ -42,7 +42,7 @@ from xgolib import XGO
 dog = XGO('xgomini')
 dog.action(1)
 ```
-### Lastest Verion:0.1.6
+### Lastest Verion:0.1.7
 
 ### xgolib_version=1.3.1
 

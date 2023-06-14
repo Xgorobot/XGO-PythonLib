@@ -208,15 +208,15 @@ class XGOEDU():
         path="/home/pi/xgoMusic/"
         os.system("mplayer"+" "+path+filename)
 
-    def xgoVedioAudio(self,filename):
+    def xgovideoAudio(self,filename):
         path="/home/pi/xgoVideos/"
         time.sleep(0.2)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
         cmd="sudo mplayer "+path+filename+" -novideo"
         os.system(cmd)
 
-    def xgoVedio(self,filename):
+    def xgovideo(self,filename):
         path="/home/pi/xgoVideos/"
-        x=threading.Thread(target=self.xgoVedioAudio,args=(filename,))
+        x=threading.Thread(target=self.xgovideoAudio,args=(filename,))
         x.start()
         global counter
         video=cv2.VideoCapture(path+filename)
@@ -279,7 +279,7 @@ class XGOEDU():
             if not self.camera_still:
                 break
 
-    def xgoVedioRecord(self,filename="record",seconds=5):
+    def xgovideoRecord(self,filename="record",seconds=5):
         path="/home/pi/xgoVideos/"
         self.camera_still=False
         time.sleep(0.6)

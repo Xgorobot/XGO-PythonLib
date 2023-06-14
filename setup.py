@@ -1,3 +1,5 @@
+# python setup.py sdist bdist_wheel
+# twine upload dist/*
 import io
 import os
 import sys
@@ -10,7 +12,7 @@ URL = 'https://github.com/Xgorobot/XGO-PythonLib'
 EMAIL = 'hello@xgorobot.com'
 AUTHOR = 'luwudynamics'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.6'
+VERSION = '0.1.7'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
