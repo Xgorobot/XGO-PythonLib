@@ -19,6 +19,7 @@ PythonLib included xgolib.py and xgoedu.py
 3 Run this command:
 
 ```
+pip install --upgrade xgo-pythonlib
 sudo pip install --upgrade xgo-pythonlib
 ```
 
