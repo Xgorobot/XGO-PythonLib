@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.4'
-__last_modified__ = '2023/6/19'
+__versinon__ = '1.2.5'
+__last_modified__ = '2023/6/20'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -313,6 +313,7 @@ class XGOEDU():
         time.sleep(0.6)
         self.open_camera()
         success,image = self.cap.read()
+        cv2.imwrite(path+filename+'.jpg',image)
         if not success:
             print("Ignoring empty camera frame")
         b,g,r = cv2.split(image)
@@ -320,7 +321,6 @@ class XGOEDU():
         image = cv2.flip(image,1)
         imgok = Image.fromarray(image)
         self.display.ShowImage(imgok)
-        cv2.imwrite(path+filename+'.jpg',image)
         print('photo writed!')
         time.sleep(0.7)
         self.xgoCamera(True)

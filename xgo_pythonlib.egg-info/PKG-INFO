@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.1.8
+Version: 0.1.9
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -60,11 +60,19 @@ from xgolib import XGO
 dog = XGO('xgomini')
 dog.action(1)
 ```
-### Lastest Verion:0.1.7
+### Lastest Verion:0.1.9
 
-### xgolib_version=1.3.1
+### xgolib_version=1.3.3
 
-### xgoedu_version=1.2.3
+### xgoedu_version=1.2.5
+
+## Change Log
+
+## [0.1.9] - 2023-06-20
+
+### Fixed
+
+- Fixed the issue with the xgoTakePhoto method that was causing abnormal RGB colors in the saved photos.
 
 
 
