@@ -43,17 +43,13 @@ from xgolib import XGO
 dog = XGO('xgomini')
 dog.action(1)
 ```
-### Lastest Verion:0.1.9
-
-### xgolib_version=1.3.3
-
-### xgoedu_version=1.2.5
+### 
 
 ## Change Log
 
-## [0.1.9] - 2023-06-20
+### [0.1.9] - 2023-06-20
 
-### Fixed
+#### Fixed
 
 - Fixed the issue with the xgoTakePhoto method that was causing abnormal RGB colors in the saved photos.
 
