@@ -47,6 +47,12 @@ dog.action(1)
 
 ## Change Log
 
+### [0.2.0] - 2023-06-21
+
+#### Fixed
+
+- xgoVideo and xgoVideoRecord method can be used.
+
 ### [0.1.9] - 2023-06-20
 
 #### Fixed

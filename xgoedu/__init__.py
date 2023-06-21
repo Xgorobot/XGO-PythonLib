@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.5'
-__last_modified__ = '2023/6/20'
+__versinon__ = '1.2.6'
+__last_modified__ = '2023/6/21'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -220,15 +220,22 @@ class XGOEDU():
         x.start()
         global counter
         video=cv2.VideoCapture(path+filename)
+        print(path+filename)
         fps = video.get(cv2.CAP_PROP_FPS) 
         print(fps)
         init_time=time.time()
         counter=0
         while True:
             grabbed, dst = video.read()
-            b,g,r = cv2.split(dst)
-            dst = cv2.merge((r,g,b))
-            imgok = Image.fromarray(dst)
+            try:
+                b,g,r = cv2.split(dst)
+                dst = cv2.merge((r,g,b))
+            except:
+                pass
+            try:
+                imgok = Image.fromarray(dst)
+            except:
+                break
             self.display.ShowImage(imgok)
             #强制卡帧数 实测帧数不要超过20贞 否则显示跟不上 但是20贞转换经常有问题 所以建议直接15贞
             counter += 1
