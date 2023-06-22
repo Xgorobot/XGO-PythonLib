@@ -9,11 +9,8 @@ PythonLib included xgolib.py and xgoedu.py
 
 ## Install instructions 
 
-1 Burn the official 0609 img image 
-
-2 Copy all files from the "model" directory to `\home\pi\model`
-
-3 Run this command:
+1 Burn the latest official image 
+2 Run this command:
 
 ```
 pip install --upgrade xgo-pythonlib
