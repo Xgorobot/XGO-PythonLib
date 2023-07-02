@@ -47,6 +47,12 @@ dog.action(1)
 
 ## Change Log
 
+### [0.2.1] - 2023-07-02
+
+#### Added
+
+- Five Methods: SpeechRecognition SpeechSynthesis QRRecognition CircleRecognition ColorRecognitio added.
+
 ### [0.2.0] - 2023-06-21
 
 #### Fixed
