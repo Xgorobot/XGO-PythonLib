@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.2.0
+Version: 0.2.1
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -24,17 +24,12 @@ PythonLib included xgolib.py and xgoedu.py
 
 [Luwu Dynamics · WIKI](https://www.yuque.com/luwudynamics)
 
-[PythonLib-WIKI](https://www.yuque.com/luwudynamics/cn/mxkaodwpo2h5zmvw)
-
-
 
 ## Install instructions 
 
-1 Burn the official 0609 img image 
+1 Burn the latest official image 
 
-2 Copy all files from the "model" directory to `\home\pi\model`
-
-3 Run this command:
+2 Run this command:
 
 ```
 pip install --upgrade xgo-pythonlib
@@ -64,6 +59,12 @@ dog.action(1)
 ### 
 
 ## Change Log
+
+### [0.2.1] - 2023-07-02
+
+#### Added
+
+- Five Methods: SpeechRecognition SpeechSynthesis QRRecognition CircleRecognition ColorRecognitio added.
 
 ### [0.2.0] - 2023-06-21
 

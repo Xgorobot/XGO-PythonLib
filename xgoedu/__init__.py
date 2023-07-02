@@ -767,7 +767,7 @@ class XGOEDU():
     def QRRecognition(self,target="camera"):
         import pyzbar.pyzbar as pyzbar
         if target=="camera":
-            self.xgoTakePhoto(self,filename="photo")
+            self.xgoTakePhoto(filename="photo")
             path="/home/pi/xgoPictures/photo.jpg"
             img=cv2.imread(path)
         else:
@@ -781,8 +781,8 @@ class XGOEDU():
         try:
             re=result[0]
         except:
-            result=None
-        
+            result=[]
+        self.xgoCamera(False)
         return result
 
     def ColorRecognitio(self,target="camera",mode='R'):
@@ -803,13 +803,13 @@ class XGOEDU():
             color_lower = np.array([26, 43, 46])
             color_upper = np.array([34, 255, 255])
         if target=="camera":
-            self.xgoTakePhoto(self,filename="photo")
+            self.xgoTakePhoto(filename="photo")
             path="/home/pi/xgoPictures/photo.jpg"
             img=cv2.imread(path)
         else:
             img=cv2.imread("/home/pi/xgoPictures/"+target)
-        frame_ = cv2.GaussianBlur(frame,(5,5),0)                    
-        hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+        frame_ = cv2.GaussianBlur(img,(5,5),0)                    
+        hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv,color_lower,color_upper)  
         mask = cv2.erode(mask,None,iterations=2)
         mask = cv2.dilate(mask,None,iterations=2)
@@ -820,20 +820,19 @@ class XGOEDU():
             cnt = max (cnts, key = cv2.contourArea)
             (color_x,color_y),color_radius = cv2.minEnclosingCircle(cnt)
 
+        self.xgoCamera(False)
+
         return ((color_x,color_y),color_radius)
 
     def CircleRecognition(self,target="camera"):
         if target=="camera":
-            self.xgoTakePhoto(self,filename="photo")
+            self.xgoTakePhoto(filename="photo")
             path="/home/pi/xgoPictures/photo.jpg"
             img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)     # 0 转为灰度图像
             #img2 = cv2.imread(path, cv2.IMREAD_COLOR)     # 1 为彩色图像
         else:
-            img=cv2.imread("/home/pi/xgoPictures/"+target)
-        cut = img
-
-        numpy_img = cv2.adaptiveThreshold(cut, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 15)   # 自动阈值二值化
-
+            img=cv2.imread("/home/pi/xgoPictures/"+target,cv2.IMREAD_GRAYSCALE)
+        numpy_img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 15)   # 自动阈值二值化
         #                                                      圆心距 canny阈值    投票数      最小半径       最大半径
         circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 18,   param1=100, param2=80,  minRadius=40, maxRadius=150)
         arr1 = np.zeros([0, 2], dtype=int)                      # 创建一个0行, 2列的空数组
@@ -841,8 +840,8 @@ class XGOEDU():
         if circles is not None:
             circles = np.uint16(np.around(circles))   
             for i in circles[0, :]:
-                re.append( (i[0], i[1]), i[2])
-
+                re.append(((i[0], i[1]), i[2]))
+        self.xgoCamera(False)
         return re
 
 
