@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.7'
-__last_modified__ = '2023/7/2'
+__versinon__ = '1.2.8'
+__last_modified__ = '2023/7/3'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -763,29 +763,44 @@ class XGOEDU():
         print("result saved as :" + save_file)
 
         self.xgoSpeaker("result.wav")
+
+    def cv2AddChineseText(self,img, text, position, textColor=(0, 255, 0), textSize=30):
+        if (isinstance(img, np.ndarray)):  
+            img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(img)
+        fontStyle = ImageFont.truetype(
+            "/home/pi/model/msyh.ttc", textSize, encoding="utf-8")
+        draw.text(position, text, textColor, font=fontStyle)
+        return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
     
     def QRRecognition(self,target="camera"):
         import pyzbar.pyzbar as pyzbar
         if target=="camera":
-            self.xgoTakePhoto(filename="photo")
-            path="/home/pi/xgoPictures/photo.jpg"
-            img=cv2.imread(path)
+            self.open_camera()
+            success,img = self.cap.read()
         else:
-            img=cv2.imread("/home/pi/xgoPictures/"+target)
+            path="/home/pi/xgoPictures/"
+            img=np.array(Image.open(path+target))
+     
         barcodes = pyzbar.decode(img) 
         result=[]
         for barcode in barcodes:
             barcodeData = barcode.data.decode("utf-8")
             barcodeType = barcode.type
             result.append(barcodeData)
+            text = "{} ({})".format(barcodeData, barcodeType)
+            img=self.cv2AddChineseText(img,text, (10, 30),(0, 255, 0), 30)
         try:
             re=result[0]
         except:
             result=[]
-        self.xgoCamera(False)
+        b,g,r = cv2.split(img)
+        img = cv2.merge((r,g,b))
+        imgok = Image.fromarray(img)
+        self.display.ShowImage(imgok)
         return result
 
-    def ColorRecognitio(self,target="camera",mode='R'):
+    def ColorRecognition(self,target="camera",mode='R'):
         color_x = 0
         color_y = 0
         color_radius = 0
@@ -803,13 +818,13 @@ class XGOEDU():
             color_lower = np.array([26, 43, 46])
             color_upper = np.array([34, 255, 255])
         if target=="camera":
-            self.xgoTakePhoto(filename="photo")
-            path="/home/pi/xgoPictures/photo.jpg"
-            img=cv2.imread(path)
+            self.open_camera()
+            success,frame = self.cap.read()
         else:
-            img=cv2.imread("/home/pi/xgoPictures/"+target)
-        frame_ = cv2.GaussianBlur(img,(5,5),0)                    
-        hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+            path="/home/pi/xgoPictures/"
+            frame=np.array(Image.open(path+target))
+        frame_ = cv2.GaussianBlur(frame,(5,5),0)                    
+        hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv,color_lower,color_upper)  
         mask = cv2.erode(mask,None,iterations=2)
         mask = cv2.dilate(mask,None,iterations=2)
@@ -819,19 +834,25 @@ class XGOEDU():
         if len(cnts) > 0:
             cnt = max (cnts, key = cv2.contourArea)
             (color_x,color_y),color_radius = cv2.minEnclosingCircle(cnt)
+            cv2.circle(frame,(int(color_x),int(color_y)),int(color_radius),(255,0,255),2)  
+        cv2.putText(frame, "X:%d, Y%d" % (int(color_x), int(color_y)), (40,40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,0), 3)
 
-        self.xgoCamera(False)
+        b,g,r = cv2.split(frame)
+        img = cv2.merge((r,g,b))
+        imgok = Image.fromarray(img)
+        self.display.ShowImage(imgok)
 
         return ((color_x,color_y),color_radius)
 
     def CircleRecognition(self,target="camera"):
         if target=="camera":
-            self.xgoTakePhoto(filename="photo")
-            path="/home/pi/xgoPictures/photo.jpg"
-            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)     # 0 转为灰度图像
-            #img2 = cv2.imread(path, cv2.IMREAD_COLOR)     # 1 为彩色图像
+            self.open_camera()
+            success,image = self.cap.read()
         else:
-            img=cv2.imread("/home/pi/xgoPictures/"+target,cv2.IMREAD_GRAYSCALE)
+            path="/home/pi/xgoPictures/"
+            image=np.array(Image.open(path+target))
+        img = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+        
         numpy_img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 15)   # 自动阈值二值化
         #                                                      圆心距 canny阈值    投票数      最小半径       最大半径
         circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 18,   param1=100, param2=80,  minRadius=40, maxRadius=150)
@@ -841,7 +862,12 @@ class XGOEDU():
             circles = np.uint16(np.around(circles))   
             for i in circles[0, :]:
                 re.append(((i[0], i[1]), i[2]))
-        self.xgoCamera(False)
+                cv2.circle(image, (i[0], i[1]), i[2], (0, 0, 255), 3)  # 轮廓
+                cv2.circle(image, (i[0], i[1]), 2, (0, 0, 0), 6)     # 圆心
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
         return re
 
 
