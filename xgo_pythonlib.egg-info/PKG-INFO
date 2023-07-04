@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.2.2
+Version: 0.2.3
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -60,7 +60,17 @@ dog.action(1)
 
 ## Change Log
 
-### [0.2.1] - 2023-07-02
+### [0.2.3] - 2023-07-04
+
+#### Added
+
+- Methods: cap_color_mask added.
+
+#### Fixed
+
+- CircleRecognition renamed BallRecognition and improved.
+
+### [0.2.2] - 2023-07-03
 
 #### Added
 

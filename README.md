@@ -42,6 +42,16 @@ dog.action(1)
 
 ## Change Log
 
+### [0.2.3] - 2023-07-04
+
+#### Added
+
+- Methods: cap_color_mask added.
+
+#### Fixed
+
+- CircleRecognition renamed BallRecognition and improved.
+
 ### [0.2.2] - 2023-07-03
 
 #### Added

@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.8'
-__last_modified__ = '2023/7/3'
+__versinon__ = '1.3.0'
+__last_modified__ = '2023/7/4'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -844,31 +844,74 @@ class XGOEDU():
 
         return ((color_x,color_y),color_radius)
 
-    def CircleRecognition(self,target="camera"):
+    def cap_color_mask(self,position=None, scale=25, h_error=20, s_limit=[90, 255], v_limit=[90, 230]):
+        if position is None:
+            position = [160, 100]
+        count = 0
+        self.open_camera()
+        while True:
+            if self.xgoButton("c"):   
+                break
+            success,frame = self.cap.read()
+            b,g,r = cv2.split(frame)
+            frame_bgr = cv2.merge((r,g,b))
+            hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+            h, s, v = cv2.split(hsv)
+            color = np.mean(h[position[1]:position[1] + scale, position[0]:position[0] + scale])
+            if self.xgoButton("b") and count == 0:
+                count += 1
+                color = np.mean(h[position[1]:position[1] + scale, position[0]:position[0] + scale])
+                color_lower = [max(color - h_error, 0), s_limit[0], v_limit[0]]
+                color_upper = [min(color + h_error, 255), s_limit[1], v_limit[1]]
+                return [color_lower, color_upper]
+
+            if count == 0:
+                cv2.rectangle(frame, (position[0], position[1]), (position[0] + scale, position[1] + scale),
+                            (255, 255, 255), 2)
+                cv2.putText(frame, 'press button B', (40, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            b,g,r = cv2.split(frame)
+            img = cv2.merge((r,g,b))
+            imgok = Image.fromarray(img)
+            self.display.ShowImage(imgok)
+    
+    def filter_img(self,frame,color):
+        b,g,r = cv2.split(frame)
+        frame_bgr = cv2.merge((r,g,b))
+        hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+        if isinstance(color, list):
+            color_lower = np.array(color[0])
+            color_upper = np.array(color[1])
+        else:
+            color_upper, color_lower = get_color_mask(color)
+        mask = cv2.inRange(hsv, color_lower, color_upper)
+        img_mask = cv2.bitwise_and(frame, frame, mask=mask)
+        return img_mask
+
+    def BallRecognition(self,color_mask,target="camera",p1=36, p2=15, minR=6, maxR=35):
+        x=y=ra=0
         if target=="camera":
             self.open_camera()
             success,image = self.cap.read()
         else:
             path="/home/pi/xgoPictures/"
             image=np.array(Image.open(path+target))
-        img = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+
+        frame_mask=self.filter_img(image, color_mask)
         
-        numpy_img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 15)   # 自动阈值二值化
-        #                                                      圆心距 canny阈值    投票数      最小半径       最大半径
-        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 18,   param1=100, param2=80,  minRadius=40, maxRadius=150)
-        arr1 = np.zeros([0, 2], dtype=int)                      # 创建一个0行, 2列的空数组
-        re=[]
-        if circles is not None:
-            circles = np.uint16(np.around(circles))   
-            for i in circles[0, :]:
-                re.append(((i[0], i[1]), i[2]))
-                cv2.circle(image, (i[0], i[1]), i[2], (0, 0, 255), 3)  # 轮廓
-                cv2.circle(image, (i[0], i[1]), 2, (0, 0, 0), 6)     # 圆心
+        img = cv2.medianBlur(frame_mask, 5)
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+        
+        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20, param1=p1, param2=p2, minRadius=minR,maxRadius=maxR)
         b,g,r = cv2.split(image)
         image = cv2.merge((r,g,b))
+        if circles is not None and len(circles[0]) == 1:
+            param = circles[0][0]
+            x, y, ra = int(param[0]), int(param[1]), int(param[2])
+            cv2.circle(image, (x, y), ra, (255, 255, 255), 2)
+            cv2.circle(image, (x, y), 2, (255, 255, 255), 2)
         imgok = Image.fromarray(image)
         self.display.ShowImage(imgok)
-        return re
+        return x,y,ra
 
 
 
