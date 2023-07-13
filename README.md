@@ -42,6 +42,12 @@ dog.action(1)
 
 ## Change Log
 
+### [0.2.4] - 2023-07-13
+
+#### Fixed
+
+- Methods: lcd_clear() was fixed.
+
 ### [0.2.3] - 2023-07-04
 
 #### Added

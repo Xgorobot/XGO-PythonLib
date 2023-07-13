@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.0'
-__last_modified__ = '2023/7/4'
+__versinon__ = '1.3.1'
+__last_modified__ = '2023/7/13'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -192,6 +192,7 @@ class XGOEDU():
     #清除屏幕
     def lcd_clear(self):
         self.splash = Image.new("RGB",(320,240),"black")
+        self.draw = ImageDraw.Draw(self.splash)
         self.display.ShowImage(self.splash)
     #显示图片
     '''
@@ -756,8 +757,7 @@ class XGOEDU():
             of.write(result_str)
 
         if has_error:
-            if (IS_PY3):
-                result_str = str(result_str, 'utf-8')
+            result_str = str(result_str, 'utf-8')
             print("tts api  error:" + result_str)
 
         print("result saved as :" + save_file)
