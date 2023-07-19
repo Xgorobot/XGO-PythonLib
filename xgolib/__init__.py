@@ -785,3 +785,4 @@ class XGO():
                 XGOorder["BT_NAME"].append(ord(c))
         print(XGOorder["BT_NAME"])
         self.__send("BT_NAME", len=length)
+
