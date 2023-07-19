@@ -39,6 +39,13 @@ dog = XGO('xgomini')
 dog.action(1)
 ```
 ### 
+## Change Log
+
+### [0.2.5] - 2023-07-19
+
+#### Fixed
+
+- Methods: Change the __init__ in xgolib.py to add delay to resolve some movement irregularities.
 
 ## Change Log
 
