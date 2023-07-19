@@ -2,8 +2,8 @@ import serial
 import struct
 import time
 import math
-__version__ = '1.3.3'
-__last_modified__ = '2023/6/19'
+__version__ = '1.3.4'
+__last_modified__ = '2023/7/19'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -139,7 +139,7 @@ class XGO():
         self.rx_ADDR = 0
         self.rx_LEN = 0
         self.rx_data = bytearray(50)
-        time.sleep(1)
+        time.sleep(0.25)
         self.version = self.read_firmware()
         if self.version[0] == 'M':
             changePara('xgomini')
@@ -150,8 +150,8 @@ class XGO():
             print("ERROR!Can't read firmware version!")
         self.mintime = 0.65
         self.reset()
-        time.sleep(0.5)
         self.init_yaw = self.read_yaw()
+        time.sleep(1.25)
         pass
 
     def __send(self, key, index=1, len=1):
@@ -172,6 +172,7 @@ class XGO():
             print("tx_data: ", tx)
 
     def __read(self, addr, read_len=1):
+        self.ser.flushInput()
         mode = 0x02
         sum_data = (0x09 + mode + addr + read_len) % 256
         sum_data = 255 - sum_data
@@ -328,7 +329,7 @@ class XGO():
         The robot dog stops moving and all parameters return to the initial state
         """
         self.action(255)
-        time.sleep(0.2)
+        time.sleep(0.75)
 
     def leg(self, leg_id, data):
         """
@@ -357,6 +358,7 @@ class XGO():
             XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index % 3 - 1])
         elif index == 13:
             self.claw(conver2u8(data, XGOparam["MOTOR_LIMIT"][3]))
+            return
         else:
             XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index - 10])
         self.__send("MOTOR_ANGLE", index)
@@ -550,7 +552,6 @@ class XGO():
         读取15个舵机的角度
         """
         self.__read(XGOorder["MOTOR_ANGLE"][0], 15)
-        self.ser.read_all()
         angle = []
         if self.__unpack():
             for i in range(self.rx_COUNT + 1):
@@ -561,7 +562,6 @@ class XGO():
         return angle
 
     def read_battery(self):
-        self.ser.read_all()
         self.__read(XGOorder["BATTERY"][0], 1)
         battery = 0
         if self.__unpack():
@@ -570,16 +570,17 @@ class XGO():
 
     def read_firmware(self):
         self.__read(XGOorder["FIRMWARE_VERSION"][0], 10)
-        self.ser.read_all()
         firmware_version = 'Null'
         if self.__unpack():
             data = self.rx_data[0:10]
-            firmware_version = data.decode("ascii").strip('\0')
+            try:
+                firmware_version = data.decode("ascii").strip('\0')
+            except Exception as e:
+                print(e)
         return firmware_version
 
     def read_roll(self):
         self.__read(XGOorder["ROLL"][0], 4)
-        self.ser.read_all()
         roll = 0
         if self.__unpack():
             roll = Byte2Float(self.rx_data)
@@ -587,7 +588,6 @@ class XGO():
 
     def read_pitch(self):
         self.__read(XGOorder["PITCH"][0], 4)
-        self.ser.read_all()
         pitch = 0
         if self.__unpack():
             pitch = Byte2Float(self.rx_data)
@@ -595,7 +595,6 @@ class XGO():
 
     def read_yaw(self):
         self.__read(XGOorder["YAW"][0], 4)
-        self.ser.read_all()
         yaw = 0
         if self.__unpack():
             yaw = Byte2Float(self.rx_data)
@@ -786,3 +785,4 @@ class XGO():
                 XGOorder["BT_NAME"].append(ord(c))
         print(XGOorder["BT_NAME"])
         self.__send("BT_NAME", len=length)
+
