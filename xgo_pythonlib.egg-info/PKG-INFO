@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.1.4
+Version: 0.2.4
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -18,26 +18,22 @@ Description-Content-Type: text/markdown
 
 # XGO-PythonLib
 
-XGO2 robot can be developed using the Python language.The motion,pose,coordinates,gripper and servo of the XGO2 can be controlled via Python. The detailed instructions for use of the library are as follows.
+XGO2 has built-in motion libraries for controlling the movement and various features of the machine dog, including battery level, firmware version, and servo angle. The motion library enables users to control translation and pose movement, as well as single servo and single-leg movement. The education library facilitates camera, screen, key, microphone, and speaker operations, as well as commonly used AI functions such as gesture recognition, face detection, emotional recognition, and age and gender recognition.  The detailed instructions for use of the library are as follows.
 
-PythonLib included xgolib.py xgoedu.py xgoadvance.py.
+PythonLib included xgolib.py and xgoedu.py
 
 [Luwu Dynamics · WIKI](https://www.yuque.com/luwudynamics)
-
-[PythonLib-WIKI](https://www.yuque.com/luwudynamics/cn/mxkaodwpo2h5zmvw)
-
 
 
 ## Install instructions 
 
-1 Burn the official 0608 img image 
+1 Burn the latest official image 
 
-2 Copy all files from the "model" directory to `\home\pi\model`
-
-3 Run this command:
+2 Run this command:
 
 ```
 pip install --upgrade xgo-pythonlib
+sudo pip install --upgrade xgo-pythonlib
 ```
 
 ## Examples
@@ -46,25 +42,51 @@ Perform gesture recognition on the current camera and press the "c" key to exit.
 
 ```python
 from xgoedu import XGOEDU 
-edu = XGOEDU()
+XGO_edu = XGOEDU()
 
 while True:
-    result=edu.gestureRecognition()  
+    result=XGO_edu.gestureRecognition()  
     print(result)
-    if edu.xgoButton("c"):  
+    if XGO_edu.xgoButton("c"):  
         break
 ```
 xgolib library example
 ```python
 from xgolib import XGO
-dog = XGO('/dev/ttyAMA0')
+dog = XGO('xgomini')
 dog.action(1)
 ```
-### Lastest Verion:0.1.3
+### 
 
-### xgolib_version=1.3.0
+## Change Log
 
-### xgoedu_version=1.2.1
+### [0.2.3] - 2023-07-04
+
+#### Added
+
+- Methods: cap_color_mask added.
+
+#### Fixed
+
+- CircleRecognition renamed BallRecognition and improved.
+
+### [0.2.2] - 2023-07-03
+
+#### Added
+
+- Five Methods: SpeechRecognition SpeechSynthesis QRRecognition CircleRecognition ColorRecognitio added.
+
+### [0.2.0] - 2023-06-21
+
+#### Fixed
+
+- xgoVideo and xgoVideoRecord method can be used.
+
+### [0.1.9] - 2023-06-20
+
+#### Fixed
+
+- Fixed the issue with the xgoTakePhoto method that was causing abnormal RGB colors in the saved photos.
 
 
 

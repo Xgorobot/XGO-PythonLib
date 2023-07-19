@@ -4,7 +4,7 @@ xgo图形化python库  edu库
 import cv2
 import numpy as np
 import math
-import os,sys,time
+import os,sys,time,json,base64
 import spidev as SPI
 import xgoscreen.LCD_2inch as LCD_2inch
 import RPi.GPIO as GPIO
@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.2.2'
-__last_modified__ = '2023/6/11'
+__versinon__ = '1.3.1'
+__last_modified__ = '2023/7/13'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -131,6 +131,42 @@ class XGOEDU():
             self.cap.set(3,320)
             self.cap.set(4,240)
 
+    def fetch_token(self):
+        from urllib.request import urlopen
+        from urllib.request import Request
+        from urllib.error import URLError
+        from urllib.parse import urlencode
+        API_KEY = 'Q4ZgU8bfnhA8HQFnNucBO2ut'
+        SECRET_KEY = 'MqFrVgdwoM8ZuGIp0NIFF7qfYti4mjP6'
+        TOKEN_URL = 'http://aip.baidubce.com/oauth/2.0/token'
+        params = {'grant_type': 'client_credentials',
+                'client_id': API_KEY,
+                'client_secret': SECRET_KEY}
+        post_data = urlencode(params)
+        post_data = post_data.encode( 'utf-8')
+        req = Request(TOKEN_URL, post_data)
+        try:
+            f = urlopen(req)
+            result_str = f.read()
+        except URLError as err:
+            print('token http response http code : ' + str(err.code))
+            result_str = err.read()
+        result_str =  result_str.decode()
+
+        #print(result_str)
+        result = json.loads(result_str)
+        #print(result)
+        SCOPE=False
+        if ('access_token' in result.keys() and 'scope' in result.keys()):
+            #print(SCOPE)
+            if SCOPE and (not SCOPE in result['scope'].split(' ')):  # SCOPE = False 忽略检查
+                raise DemoError('scope is not correct')
+            #print('SUCCESS WITH TOKEN: %s  EXPIRES IN SECONDS: %s' % (result['access_token'], result['expires_in']))
+            return result['access_token']
+        else:
+            raise DemoError('MAYBE API_KEY or SECRET_KEY not correct: access_token or scope not found in token response')
+
+
 
     #绘画直线
     '''
@@ -156,13 +192,15 @@ class XGOEDU():
     #清除屏幕
     def lcd_clear(self):
         self.splash = Image.new("RGB",(320,240),"black")
+        self.draw = ImageDraw.Draw(self.splash)
         self.display.ShowImage(self.splash)
     #显示图片
     '''
     图片的大小为320*240,jpg格式
     '''
     def lcd_picture(self,filename,x=0,y=0):
-        image = Image.open(filename)
+        path="/home/pi/xgoPictures/"
+        image = Image.open(path+filename)
         self.splash.paste(image,(x,y))
         self.display.ShowImage(self.splash)
     #显示文字
@@ -204,27 +242,37 @@ class XGOEDU():
     filename 文件名 字符串
     '''
     def xgoSpeaker(self,filename):
-        os.system("mplayer"+" "+filename)
+        path="/home/pi/xgoMusic/"
+        os.system("mplayer"+" "+path+filename)
 
-    def xgoVedioAudio(self,filename):
-        time.sleep(0.1)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
-        cmd="sudo mplayer "+filename+" -novideo"
+    def xgoVideoAudio(self,filename):
+        path="/home/pi/xgoVideos/"
+        time.sleep(0.2)  #音画速度同步了 但是时间轴可能不同步 这里调试一下
+        cmd="sudo mplayer "+path+filename+" -novideo"
         os.system(cmd)
 
-    def xgoVedio(self,filename):
-        x=threading.Thread(target=self.xgoVedioAudio,args=(filename,))
+    def xgoVideo(self,filename):
+        path="/home/pi/xgoVideos/"
+        x=threading.Thread(target=self.xgoVideoAudio,args=(filename,))
         x.start()
         global counter
-        video=cv2.VideoCapture(filename)
+        video=cv2.VideoCapture(path+filename)
+        print(path+filename)
         fps = video.get(cv2.CAP_PROP_FPS) 
         print(fps)
         init_time=time.time()
         counter=0
         while True:
             grabbed, dst = video.read()
-            b,g,r = cv2.split(dst)
-            dst = cv2.merge((r,g,b))
-            imgok = Image.fromarray(dst)
+            try:
+                b,g,r = cv2.split(dst)
+                dst = cv2.merge((r,g,b))
+            except:
+                pass
+            try:
+                imgok = Image.fromarray(dst)
+            except:
+                break
             self.display.ShowImage(imgok)
             #强制卡帧数 实测帧数不要超过20贞 否则显示跟不上 但是20贞转换经常有问题 所以建议直接15贞
             counter += 1
@@ -243,13 +291,14 @@ class XGOEDU():
     seconds 录制时间S 字符串
     '''
     def xgoAudioRecord(self,filename="record",seconds=5):
+        path="/home/pi/xgoMusic/"
         command1 = "sudo arecord -d"
-        command2 = "-f S32_LE -r 16000 -c 1 -t wav"
-        cmd=command1+" "+str(seconds)+" "+command2+" "+filename+".wav"
+        command2 = "-f S32_LE -r 8000 -c 1 -t wav"
+        cmd=command1+" "+str(seconds)+" "+command2+" "+path+filename+".wav"
         print(cmd)
         os.system(cmd)
 
-    def cameraOn(self,switch):
+    def xgoCamera(self,switch):
         global camera_still
         if switch:
             self.open_camera()
@@ -274,7 +323,8 @@ class XGOEDU():
             if not self.camera_still:
                 break
 
-    def xgoVedioRecord(self,filename="record",seconds=5):
+    def xgoVideoRecord(self,filename="record",seconds=5):
+        path="/home/pi/xgoVideos/"
         self.camera_still=False
         time.sleep(0.6)
         self.open_camera()
@@ -282,7 +332,7 @@ class XGOEDU():
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        videoWrite = cv2.VideoWriter(filename+'.mp4', fourcc, FPS, (width,height))
+        videoWrite = cv2.VideoWriter(path+filename+'.mp4', fourcc, FPS, (width,height))
         starttime=time.time()
         while 1:
             print('recording...')
@@ -298,14 +348,16 @@ class XGOEDU():
             if time.time()-starttime>seconds:
                 break
         print('recording done')
-        self.cameraOn(True)
+        self.xgoCamera(True)
         videoWrite.release()
 
-    def xgoTakePhoto(self,filename="photo.jpg"):
+    def xgoTakePhoto(self,filename="photo"):
+        path="/home/pi/xgoPictures/"
         self.camera_still=False
         time.sleep(0.6)
         self.open_camera()
         success,image = self.cap.read()
+        cv2.imwrite(path+filename+'.jpg',image)
         if not success:
             print("Ignoring empty camera frame")
         b,g,r = cv2.split(image)
@@ -313,10 +365,9 @@ class XGOEDU():
         image = cv2.flip(image,1)
         imgok = Image.fromarray(image)
         self.display.ShowImage(imgok)
-        cv2.imwrite(filename+'.jpg',image)
         print('photo writed!')
         time.sleep(0.7)
-        self.cameraOn(True)
+        self.xgoCamera(True)
 
 
     '''
@@ -600,7 +651,274 @@ class XGOEDU():
     
     def text(self,frame,text,xy,font_size,colors,size):
         frame=cv2.putText(frame,text,xy,cv2.FONT_HERSHEY_SIMPLEX,font_size,color(colors),size)
-        return frame       
+        return frame   
+
+    def SpeechRecognition(self,seconds=3):
+        self.xgoAudioRecord(filename="recog",seconds=seconds)
+        from urllib.request import urlopen
+        from urllib.request import Request
+        from urllib.error import URLError
+        from urllib.parse import urlencode
+        timer = time.perf_counter
+        AUDIO_FILE = 'recog.wav' 
+        FORMAT = AUDIO_FILE[-3:]  
+        CUID = '123456PYTHON'
+        RATE = 16000
+        DEV_PID = 1537  
+        ASR_URL = 'http://vop.baidu.com/server_api'
+        SCOPE = 'audio_voice_assistant_get' 
+
+        token = self.fetch_token()
+
+        speech_data = []
+        path="/home/pi/xgoMusic/"
+        with open(path+AUDIO_FILE, 'rb') as speech_file:
+            speech_data = speech_file.read()
+
+        length = len(speech_data)
+        if length == 0:
+            raise DemoError('file %s length read 0 bytes' % AUDIO_FILE)
+        speech = base64.b64encode(speech_data)
+        speech = str(speech, 'utf-8')
+        params = {'dev_pid': DEV_PID,
+                'format': FORMAT,
+                'rate': RATE,
+                'token': token,
+                'cuid': CUID,
+                'channel': 1,
+                'speech': speech,
+                'len': length
+                }
+        post_data = json.dumps(params, sort_keys=False)
+        req = Request(ASR_URL, post_data.encode('utf-8'))
+        req.add_header('Content-Type', 'application/json')
+        try:
+            begin = timer()
+            f = urlopen(req)
+            result_str = f.read()
+            print ("Request time cost %f" % (timer() - begin))
+        except URLError as err:
+            print('asr http response http code : ' + str(err.code))
+            result_str = err.read()
+        try:
+            result_str = str(result_str, 'utf-8')
+            re=json.loads(result_str)
+            text=re['result'][0]
+        except:
+            text='error!'
+        return text
+
+    def SpeechSynthesis(self,texts):
+        from urllib.request import urlopen
+        from urllib.request import Request
+        from urllib.error import URLError
+        from urllib.parse import urlencode
+        from urllib.parse import quote_plus
+
+        TEXT = texts
+        PER = 0
+        SPD = 5
+        PIT = 5
+        VOL = 5
+        AUE = 6
+        FORMATS = {3: "mp3", 4: "pcm", 5: "pcm", 6: "wav"}
+        FORMAT = FORMATS[AUE]
+        CUID = "123456PYTHON"
+        TTS_URL = 'http://tsn.baidu.com/text2audio'
+
+        SCOPE = 'audio_tts_post' 
+
+        token = self.fetch_token()
+        tex = quote_plus(TEXT) 
+        print(tex)
+        params = {'tok': token, 'tex': tex, 'per': PER, 'spd': SPD, 'pit': PIT, 'vol': VOL, 'aue': AUE, 'cuid': CUID,
+                'lan': 'zh', 'ctp': 1}  
+
+        data = urlencode(params)
+        print('test on Web Browser' + TTS_URL + '?' + data)
+
+        req = Request(TTS_URL, data.encode('utf-8'))
+        has_error = False
+        try:
+            f = urlopen(req)
+            result_str = f.read()
+
+            headers = dict((name.lower(), value) for name, value in f.headers.items())
+
+            has_error = ('content-type' not in headers.keys() or headers['content-type'].find('audio/') < 0)
+        except  URLError as err:
+            print('asr http response http code : ' + str(err.code))
+            result_str = err.read()
+            has_error = True
+
+        path="/home/pi/xgoMusic/"
+        save_file = "error.txt" if has_error else 'result.' + FORMAT
+        with open(path+save_file, 'wb') as of:
+            of.write(result_str)
+
+        if has_error:
+            result_str = str(result_str, 'utf-8')
+            print("tts api  error:" + result_str)
+
+        print("result saved as :" + save_file)
+
+        self.xgoSpeaker("result.wav")
+
+    def cv2AddChineseText(self,img, text, position, textColor=(0, 255, 0), textSize=30):
+        if (isinstance(img, np.ndarray)):  
+            img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(img)
+        fontStyle = ImageFont.truetype(
+            "/home/pi/model/msyh.ttc", textSize, encoding="utf-8")
+        draw.text(position, text, textColor, font=fontStyle)
+        return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
+    
+    def QRRecognition(self,target="camera"):
+        import pyzbar.pyzbar as pyzbar
+        if target=="camera":
+            self.open_camera()
+            success,img = self.cap.read()
+        else:
+            path="/home/pi/xgoPictures/"
+            img=np.array(Image.open(path+target))
+     
+        barcodes = pyzbar.decode(img) 
+        result=[]
+        for barcode in barcodes:
+            barcodeData = barcode.data.decode("utf-8")
+            barcodeType = barcode.type
+            result.append(barcodeData)
+            text = "{} ({})".format(barcodeData, barcodeType)
+            img=self.cv2AddChineseText(img,text, (10, 30),(0, 255, 0), 30)
+        try:
+            re=result[0]
+        except:
+            result=[]
+        b,g,r = cv2.split(img)
+        img = cv2.merge((r,g,b))
+        imgok = Image.fromarray(img)
+        self.display.ShowImage(imgok)
+        return result
+
+    def ColorRecognition(self,target="camera",mode='R'):
+        color_x = 0
+        color_y = 0
+        color_radius = 0
+
+        if mode=='R':  #red
+            color_lower = np.array([0, 43, 46])
+            color_upper = np.array([10, 255, 255])
+        elif mode=='G': #green
+            color_lower = np.array([35, 43, 46])
+            color_upper = np.array([77, 255, 255])
+        elif mode=='B':   #blue
+            color_lower = np.array([100, 43, 46])
+            color_upper = np.array([124, 255, 255])
+        elif mode=='Y':   #yellow
+            color_lower = np.array([26, 43, 46])
+            color_upper = np.array([34, 255, 255])
+        if target=="camera":
+            self.open_camera()
+            success,frame = self.cap.read()
+        else:
+            path="/home/pi/xgoPictures/"
+            frame=np.array(Image.open(path+target))
+        frame_ = cv2.GaussianBlur(frame,(5,5),0)                    
+        hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv,color_lower,color_upper)  
+        mask = cv2.erode(mask,None,iterations=2)
+        mask = cv2.dilate(mask,None,iterations=2)
+        mask = cv2.GaussianBlur(mask,(3,3),0)     
+        cnts = cv2.findContours(mask.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2] 
+
+        if len(cnts) > 0:
+            cnt = max (cnts, key = cv2.contourArea)
+            (color_x,color_y),color_radius = cv2.minEnclosingCircle(cnt)
+            cv2.circle(frame,(int(color_x),int(color_y)),int(color_radius),(255,0,255),2)  
+        cv2.putText(frame, "X:%d, Y%d" % (int(color_x), int(color_y)), (40,40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,0), 3)
+
+        b,g,r = cv2.split(frame)
+        img = cv2.merge((r,g,b))
+        imgok = Image.fromarray(img)
+        self.display.ShowImage(imgok)
+
+        return ((color_x,color_y),color_radius)
+
+    def cap_color_mask(self,position=None, scale=25, h_error=20, s_limit=[90, 255], v_limit=[90, 230]):
+        if position is None:
+            position = [160, 100]
+        count = 0
+        self.open_camera()
+        while True:
+            if self.xgoButton("c"):   
+                break
+            success,frame = self.cap.read()
+            b,g,r = cv2.split(frame)
+            frame_bgr = cv2.merge((r,g,b))
+            hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+            h, s, v = cv2.split(hsv)
+            color = np.mean(h[position[1]:position[1] + scale, position[0]:position[0] + scale])
+            if self.xgoButton("b") and count == 0:
+                count += 1
+                color = np.mean(h[position[1]:position[1] + scale, position[0]:position[0] + scale])
+                color_lower = [max(color - h_error, 0), s_limit[0], v_limit[0]]
+                color_upper = [min(color + h_error, 255), s_limit[1], v_limit[1]]
+                return [color_lower, color_upper]
+
+            if count == 0:
+                cv2.rectangle(frame, (position[0], position[1]), (position[0] + scale, position[1] + scale),
+                            (255, 255, 255), 2)
+                cv2.putText(frame, 'press button B', (40, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            b,g,r = cv2.split(frame)
+            img = cv2.merge((r,g,b))
+            imgok = Image.fromarray(img)
+            self.display.ShowImage(imgok)
+    
+    def filter_img(self,frame,color):
+        b,g,r = cv2.split(frame)
+        frame_bgr = cv2.merge((r,g,b))
+        hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+        if isinstance(color, list):
+            color_lower = np.array(color[0])
+            color_upper = np.array(color[1])
+        else:
+            color_upper, color_lower = get_color_mask(color)
+        mask = cv2.inRange(hsv, color_lower, color_upper)
+        img_mask = cv2.bitwise_and(frame, frame, mask=mask)
+        return img_mask
+
+    def BallRecognition(self,color_mask,target="camera",p1=36, p2=15, minR=6, maxR=35):
+        x=y=ra=0
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            path="/home/pi/xgoPictures/"
+            image=np.array(Image.open(path+target))
+
+        frame_mask=self.filter_img(image, color_mask)
+        
+        img = cv2.medianBlur(frame_mask, 5)
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+        
+        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20, param1=p1, param2=p2, minRadius=minR,maxRadius=maxR)
+        b,g,r = cv2.split(image)
+        image = cv2.merge((r,g,b))
+        if circles is not None and len(circles[0]) == 1:
+            param = circles[0][0]
+            x, y, ra = int(param[0]), int(param[1]), int(param[2])
+            cv2.circle(image, (x, y), ra, (255, 255, 255), 2)
+            cv2.circle(image, (x, y), 2, (255, 255, 255), 2)
+        imgok = Image.fromarray(image)
+        self.display.ShowImage(imgok)
+        return x,y,ra
+
+
+
+
+
+class DemoError(Exception):
+    pass
 
 class hands():
     def __init__(self,model_complexity,max_num_hands,min_detection_confidence,min_tracking_confidence):

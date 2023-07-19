@@ -6,19 +6,15 @@ PythonLib included xgolib.py and xgoedu.py
 
 [Luwu Dynamics · WIKI](https://www.yuque.com/luwudynamics)
 
-[PythonLib-WIKI](https://www.yuque.com/luwudynamics/cn/mxkaodwpo2h5zmvw)
-
-
 
 ## Install instructions 
 
-1 Burn the official 0609 img image 
+1 Burn the latest official image 
 
-2 Copy all files from the "model" directory to `\home\pi\model`
-
-3 Run this command:
+2 Run this command:
 
 ```
+pip install --upgrade xgo-pythonlib
 sudo pip install --upgrade xgo-pythonlib
 ```
 
@@ -39,14 +35,53 @@ while True:
 xgolib library example
 ```python
 from xgolib import XGO
-dog = XGO('/dev/ttyAMA0')
+dog = XGO('xgomini')
 dog.action(1)
 ```
-### Lastest Verion:0.1.4
+### 
+## Change Log
 
-### xgolib_version=1.3.0
+### [0.2.5] - 2023-07-19
 
-### xgoedu_version=1.2.2
+#### Fixed
+
+- Methods: Change the __init__ in xgolib.py to add delay to resolve some movement irregularities.
+
+## Change Log
+
+### [0.2.4] - 2023-07-13
+
+#### Fixed
+
+- Methods: lcd_clear() was fixed.
+
+### [0.2.3] - 2023-07-04
+
+#### Added
+
+- Methods: cap_color_mask added.
+
+#### Fixed
+
+- CircleRecognition renamed BallRecognition and improved.
+
+### [0.2.2] - 2023-07-03
+
+#### Added
+
+- Five Methods: SpeechRecognition SpeechSynthesis QRRecognition CircleRecognition ColorRecognitio added.
+
+### [0.2.0] - 2023-06-21
+
+#### Fixed
+
+- xgoVideo and xgoVideoRecord method can be used.
+
+### [0.1.9] - 2023-06-20
+
+#### Fixed
+
+- Fixed the issue with the xgoTakePhoto method that was causing abnormal RGB colors in the saved photos.
 
 
 
