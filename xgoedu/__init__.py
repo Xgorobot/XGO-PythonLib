@@ -236,84 +236,84 @@ class XGOEDU():
     遇到回车符自动换行，遇到边缘换行，一页满了自动清屏，2,2开始继续显示
     '''
     def display_text_on_screen(content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
-    XGO_edu = XGOEDU()  # 实例化edu
-
-    # 计算每行可显示字符的数量和行数
-    char_width = font_size +1  #// 2
-    chars_per_line = screen_width // char_width
-    lines = screen_height // char_width
-
-    # 拆分内容为逐个字符的列表
-    chars = list(content)
- 
-    # 处理换行符
-    line_break_indices = [i for i, char in enumerate(chars) if char == '\n']
-
-
-    # 计算总行数和页数
-    total_lines = len(chars) // chars_per_line + 1
-    total_pages = (total_lines - 1+len(line_break_indices)) // lines + 1
-
-    # 清屏
-    self.display.clear()
-
-    # 逐行显示文字
-    current_page = 1
-    current_line = 1
-    current_char = 0
-
-    while current_page <= total_pages or  current_char < len(chars) :
+        XGO_edu = XGOEDU()  # 实例化edu
+    
+        # 计算每行可显示字符的数量和行数
+        char_width = font_size +1  #// 2
+        chars_per_line = screen_width // char_width
+        lines = screen_height // char_width
+    
+        # 拆分内容为逐个字符的列表
+        chars = list(content)
+     
+        # 处理换行符
+        line_break_indices = [i for i, char in enumerate(chars) if char == '\n']
+    
+    
+        # 计算总行数和页数
+        total_lines = len(chars) // chars_per_line + 1
+        total_pages = (total_lines - 1+len(line_break_indices)) // lines + 1
+    
+        # 清屏
         self.display.clear()
-        # 计算当前页要显示的行数
-        if current_page < total_pages or  current_char < len(chars) :
-            lines_to_display = lines
-        else:
-            lines_to_display = (total_lines - 1) % lines + 1
-
+    
+        # 逐行显示文字
+        current_page = 1
         current_line = 1
-        # 显示当前页的内容
-        for line in range(lines_to_display):
-            current_x = start_x
-            current_y = start_y + current_line * char_width # font_size
-            current_line +=1
-            if current_line >= lines:
-                break
-
-            # 显示当前行的文字
-            for _ in range(chars_per_line):
+        current_char = 0
+    
+        while current_page <= total_pages or  current_char < len(chars) :
+            self.display.clear()
+            # 计算当前页要显示的行数
+            if current_page < total_pages or  current_char < len(chars) :
+                lines_to_display = lines
+            else:
+                lines_to_display = (total_lines - 1) % lines + 1
+    
+            current_line = 1
+            # 显示当前页的内容
+            for line in range(lines_to_display):
+                current_x = start_x
+                current_y = start_y + current_line * char_width # font_size
+                current_line +=1
+                if current_line >= lines:
+                    break
+    
+                # 显示当前行的文字
+                for _ in range(chars_per_line):
+                    # 检查是否所有字符都已显示完毕
+                    if current_char >= len(chars):
+                        break
+    
+                    char = chars[current_char]
+                    if char == '\n':
+                        current_x = start_x
+                        current_y = start_y + current_line * char_width # font_size
+                        current_line +=1
+                       
+                        XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
+                        current_char += 1
+                        break  # continue
+    
+                    lcd_text(current_x, current_y, char, color, font_size)
+                    current_x += char_width
+                    current_char += 1
+    
                 # 检查是否所有字符都已显示完毕
                 if current_char >= len(chars):
                     break
-
-                char = chars[current_char]
-                if char == '\n':
-                    current_x = start_x
-                    current_y = start_y + current_line * char_width # font_size
-                    current_line +=1
-                   
-                    XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
-                    current_char += 1
-                    break  # continue
-
-                lcd_text(current_x, current_y, char, color, font_size)
-                current_x += char_width
-                current_char += 1
-
-            # 检查是否所有字符都已显示完毕
-            if current_char >= len(chars):
-                break
-
-        # 更新当前页和当前行
-        current_page += 1
-        current_line += lines_to_display
-
-        # 等待显示时间或手动触发翻页
-        # 这里可以根据需要添加适当的延时代码或触发翻页的机制
-
-    # 如果内容超过一屏幕，则清屏
-    # if total_lines > lines:
-    if current_page < total_pages:
-        self.display.clear()
+    
+            # 更新当前页和当前行
+            current_page += 1
+            current_line += lines_to_display
+    
+            # 等待显示时间或手动触发翻页
+            # 这里可以根据需要添加适当的延时代码或触发翻页的机制
+    
+        # 如果内容超过一屏幕，则清屏
+        # if total_lines > lines:
+        if current_page < total_pages:
+            self.display.clear()
     
     #key_value
     '''
