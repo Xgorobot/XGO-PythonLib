@@ -182,6 +182,24 @@ class XGOEDU():
     def lcd_circle(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
         self.draw.arc((x1,y1,x2,y2),angle0,angle1,fill=color ,width=width)
         self.display.ShowImage(self.splash)
+
+    #绘画圆:  根据圆形点和半径画圆
+    '''
+    center_x, center_y 圆心点坐标
+    radius 圆半径长度 mm
+    
+    '''
+    def draw_circle(center_x, center_y, radius, color=(255, 255, 255), width=2):
+        # Calculate the bounding box for the circle
+        x1 = center_x - radius
+        y1 = center_y - radius
+        x2 = center_x + radius
+        y2 = center_y + radius
+    
+        # Call lcd_circle() function to draw the circle
+        lcd_circle(x1, y1, x2, y2, 0, 360, color=color, width=width)
+
+    
     #绘画矩形
     '''
     x1,y1为初始点坐标,x2,y2为对角线终止点坐标
