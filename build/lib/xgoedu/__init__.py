@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.1'
-__last_modified__ = '2023/7/13'
+__versinon__ = '1.3.2'
+__last_modified__ = '2023/8/19'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -212,6 +212,94 @@ class XGOEDU():
             self.font = ImageFont.truetype("/home/pi/model/msyh.ttc",fontsize)
         self.draw.text((x,y),content,fill=color,font=self.font)
         self.display.ShowImage(self.splash)
+    #显示文字: 流式显示，自动换行，自动翻页
+    '''
+    content ： 显示的字符串内容，可带换行符
+    start_x=2, start_y=2  为初始点坐标, 
+    color；  字体颜色 (255,0,0)
+    '''
+    def display_text_on_screen(content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
+        XGO_edu = XGOEDU()  # 实例化edu
+    
+        # 计算每行可显示字符的数量和行数
+        char_width = font_size +1  #// 2
+        chars_per_line = screen_width // char_width
+        lines = screen_height // char_width
+    
+        # 拆分内容为逐个字符的列表
+        chars = list(content)
+     
+        # 处理换行符
+        line_break_indices = [i for i, char in enumerate(chars) if char == '\n']
+    
+    
+        # 计算总行数和页数
+        total_lines = len(chars) // chars_per_line + 1
+        total_pages = (total_lines - 1+len(line_break_indices)) // lines + 1
+    
+        # 清屏
+        XGO_edu.lcd_clear()
+    
+        # 逐行显示文字
+        current_page = 1
+        current_line = 1
+        current_char = 0
+    
+        while current_page <= total_pages or  current_char < len(chars) :
+            XGO_edu.lcd_clear()
+            # 计算当前页要显示的行数
+            if current_page < total_pages or  current_char < len(chars) :
+                lines_to_display = lines
+            else:
+                lines_to_display = (total_lines - 1) % lines + 1
+    
+            current_line = 1
+            # 显示当前页的内容
+            for line in range(lines_to_display):
+                current_x = start_x
+                current_y = start_y + current_line * char_width # font_size
+                current_line +=1
+                if current_line >= lines:
+                    break
+    
+                # 显示当前行的文字
+                for _ in range(chars_per_line):
+                    # 检查是否所有字符都已显示完毕
+                    if current_char >= len(chars):
+                        break
+    
+                    char = chars[current_char]
+                    if char == '\n':
+                        current_x = start_x
+                        current_y = start_y + current_line * char_width # font_size
+                        current_line +=1
+                       
+                        XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
+                        current_char += 1
+                        break  # continue
+    
+                    XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
+                    current_x += char_width
+                    current_char += 1
+    
+                # 检查是否所有字符都已显示完毕
+                if current_char >= len(chars):
+                    break
+    
+            # 更新当前页和当前行
+            current_page += 1
+            current_line += lines_to_display
+    
+            # 等待显示时间或手动触发翻页
+            # 这里可以根据需要添加适当的延时代码或触发翻页的机制
+    
+        # 如果内容超过一屏幕，则清屏
+        # if total_lines > lines:
+        if current_page < total_pages:
+            XGO_edu.lcd_clear()
+
+
+    
     #key_value
     '''
     a左上按键

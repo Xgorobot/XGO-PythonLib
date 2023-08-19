@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.1'
-__last_modified__ = '2023/7/13'
+__versinon__ = '1.3.2'
+__last_modified__ = '2023/8/19'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
