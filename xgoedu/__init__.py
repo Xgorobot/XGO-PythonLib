@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.2'
-__last_modified__ = '2023/8/19'
+__versinon__ = '1.3.3'
+__last_modified__ = '2023/8/20'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -179,9 +179,28 @@ class XGOEDU():
     '''
     x1,y1,x2,y2为定义给定边框的两个点,angle0为初始角度,angle1为终止角度
     '''
-    def lcd_circle(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
+    def lcd_arc(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
         self.draw.arc((x1,y1,x2,y2),angle0,angle1,fill=color ,width=width)
         self.display.ShowImage(self.splash)
+
+    #绘画圆:  根据圆形点和半径画圆
+    '''
+    center_x, center_y 圆心点坐标
+    radius 圆半径长度 mm
+    
+    '''
+    def lcd_circle(self,center_x, center_y, radius, color, width=2):
+        # Calculate the bounding box for the circle
+        x1 = center_x - radius
+        y1 = center_y - radius
+        x2 = center_x + radius
+        y2 = center_y + radius
+    
+        # Call lcd_circle() function to draw the circle
+        self.lcd_arc(x1, y1, x2, y2, 0, 360, color=color, width=width)
+  
+
+    
     #绘画矩形
     '''
     x1,y1为初始点坐标,x2,y2为对角线终止点坐标
@@ -212,11 +231,10 @@ class XGOEDU():
             self.font = ImageFont.truetype("/home/pi/model/msyh.ttc",fontsize)
         self.draw.text((x,y),content,fill=color,font=self.font)
         self.display.ShowImage(self.splash)
-    #显示文字: 流式显示，自动换行，自动翻页
+    #流式显示所有文字
     '''
-    content ： 显示的字符串内容，可带换行符
-    start_x=2, start_y=2  为初始点坐标, 
-    color；  字体颜色 (255,0,0)
+    x1,y1为初始点坐标,content为内容
+    遇到回车符自动换行，遇到边缘换行，一页满了自动清屏，2,2开始继续显示
     '''
     def display_text_on_screen(content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
         XGO_edu = XGOEDU()  # 实例化edu
@@ -238,7 +256,7 @@ class XGOEDU():
         total_pages = (total_lines - 1+len(line_break_indices)) // lines + 1
     
         # 清屏
-        XGO_edu.lcd_clear()
+        self.display.clear()
     
         # 逐行显示文字
         current_page = 1
@@ -246,7 +264,7 @@ class XGOEDU():
         current_char = 0
     
         while current_page <= total_pages or  current_char < len(chars) :
-            XGO_edu.lcd_clear()
+            self.display.clear()
             # 计算当前页要显示的行数
             if current_page < total_pages or  current_char < len(chars) :
                 lines_to_display = lines
@@ -278,7 +296,7 @@ class XGOEDU():
                         current_char += 1
                         break  # continue
     
-                    XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
+                    lcd_text(current_x, current_y, char, color, font_size)
                     current_x += char_width
                     current_char += 1
     
@@ -296,9 +314,7 @@ class XGOEDU():
         # 如果内容超过一屏幕，则清屏
         # if total_lines > lines:
         if current_page < total_pages:
-            XGO_edu.lcd_clear()
-
-
+            self.display.clear()
     
     #key_value
     '''
@@ -515,6 +531,94 @@ class XGOEDU():
                 XGOEDU.lcd_clear(self)
                 time.sleep(0.5)
                 break
+    '''
+    骨骼识别
+    '''
+    def posenetRecognition(self,target="camera"):
+        import mediapipe as mp
+        mp_pose = mp.solutions.pose
+        ges = ''
+        mp_drawing = mp.solutions.drawing_utils
+        mp_drawing_styles = mp.solutions.drawing_styles
+        mp_holistic = mp.solutions.holistic
+        joint_list = [[24,26,28], [23,25,27], [14,12,24], [13,11,23]]  # leg&arm
+        if target=="camera":
+            self.open_camera()
+            success,image = self.cap.read()
+        else:
+            image=np.array(Image.open(target))
+
+        with mp_pose.Pose(
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5) as pose:
+
+                image.flags.writeable = False
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                results = pose.process(image)
+
+                # Draw the pose annotation on the image.
+                image.flags.writeable = True
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                mp_drawing.draw_landmarks(
+                    image,
+                    results.pose_landmarks,
+                    mp_pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+                # Flip the image horizontally for a selfie-view display.
+                
+                if results.pose_landmarks:
+                    RHL = results.pose_landmarks
+                    angellist=[]
+                    for joint in joint_list:
+                        a = np.array([RHL.landmark[joint[0]].x, RHL.landmark[joint[0]].y])
+                        b = np.array([RHL.landmark[joint[1]].x, RHL.landmark[joint[1]].y])
+                        c = np.array([RHL.landmark[joint[2]].x, RHL.landmark[joint[2]].y])
+                        radians_fingers = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(a[1] - b[1], a[0] - b[0])
+                        angle = np.abs(radians_fingers * 180.0 / np.pi) 
+                        if angle > 180.0:
+                            angle = 360 - angle
+                        #cv2.putText(image, str(round(angle, 2)), tuple(np.multiply(b, [640, 480]).astype(int)),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                        angellist.append(angle)
+                else:
+                    angellist=[]
+                print(angellist)
+                b,g,r = cv2.split(image)
+                image = cv2.merge((r,g,b))
+                image = cv2.flip(image, 1)
+                try:
+                    ges=str(int(angellist[0]))+'|'+str(int(angellist[1]))+'|'+str(int(angellist[2]))+'|'+str(int(angellist[3]))
+                except:
+                    ges=' '
+                cv2.putText(image,ges,(10,220),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                imgok = Image.fromarray(image)
+                self.display.ShowImage(imgok)
+
+
+        # datas = self.hand.run(image)
+        # b,g,r = cv2.split(image)
+        # image = cv2.merge((r,g,b))
+        # #image = cv2.flip(image,1)
+        # for data in datas:
+        #     rect = data['rect']
+        #     right_left = data['right_left']
+        #     center = data['center']
+        #     dlandmark = data['dlandmark']
+        #     hand_angle = data['hand_angle']
+        #     XGOEDU.rectangle(self,image,rect,"#33cc00",2)
+        #     #XGOEDU.text(self,image,right_left,center,2,"#cc0000",5)
+        #     if right_left == 'L':
+        #         XGOEDU.text(self,image,hand_pos(hand_angle),(180,80),1.5,"#33cc00",2)
+        #     elif right_left == 'R':
+        #         XGOEDU.text(self,image,hand_pos(hand_angle),(50,80),1.5,"#ff0000",2)
+        #     ges = hand_pos(hand_angle)
+        #     for i in dlandmark:
+        #         XGOEDU.circle(self,image,i,3,"#ff9900",-1)
+        # imgok = Image.fromarray(image)
+        # self.display.ShowImage(imgok)
+        if angellist==[]:
+            return None
+        else:
+            return angellist
 
     '''
     手势识别

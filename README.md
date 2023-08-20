@@ -49,6 +49,16 @@ dog.action(1)
 
 ## Change Log
 
+### [0.2.7] - 2023-08-20
+
+#### Added
+
+- Methods: posenetRecognition added.
+
+#### Fixed
+
+- Methods: lcd_arc() and lcd_circle() 
+
 ### [0.2.4] - 2023-07-13
 
 #### Fixed
