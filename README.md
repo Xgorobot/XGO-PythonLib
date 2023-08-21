@@ -38,14 +38,7 @@ from xgolib import XGO
 dog = XGO('xgomini')
 dog.action(1)
 ```
-### 
-## Change Log
 
-### [0.2.5] - 2023-07-19
-
-#### Fixed
-
-- Methods: Change the __init__ in xgolib.py to add delay to resolve some movement irregularities.
 
 ## Change Log
 
@@ -58,6 +51,12 @@ dog.action(1)
 #### Fixed
 
 - Methods: lcd_arc() and lcd_circle() 
+
+### [0.2.5] - 2023-07-19
+
+#### Fixed
+
+- Methods: Change the __init__ in xgolib.py to add delay to resolve some movement irregularities.
 
 ### [0.2.4] - 2023-07-13
 
