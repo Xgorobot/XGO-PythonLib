@@ -39,8 +39,13 @@ dog = XGO('xgomini')
 dog.action(1)
 ```
 
-
 ## Change Log
+
+### [0.2.8] - 2023-08-22
+
+#### Fixed
+
+- Methods: display_text_on_screen()
 
 ### [0.2.7] - 2023-08-20
 

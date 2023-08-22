@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.3'
-__last_modified__ = '2023/8/20'
+__versinon__ = '1.3.4'
+__last_modified__ = '2023/8/22'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -237,8 +237,6 @@ class XGOEDU():
     遇到回车符自动换行，遇到边缘换行，一页满了自动清屏，2,2开始继续显示
     '''
     def display_text_on_screen(content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
-        XGO_edu = XGOEDU()  # 实例化edu
-    
         # 计算每行可显示字符的数量和行数
         char_width = font_size +1  #// 2
         chars_per_line = screen_width // char_width
@@ -292,7 +290,7 @@ class XGOEDU():
                         current_y = start_y + current_line * char_width # font_size
                         current_line +=1
                        
-                        XGO_edu.lcd_text(current_x, current_y, char, color, font_size)
+                        lcd_text(current_x, current_y, char, color, font_size)
                         current_char += 1
                         break  # continue
     
