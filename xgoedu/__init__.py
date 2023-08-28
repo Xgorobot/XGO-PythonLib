@@ -236,7 +236,7 @@ class XGOEDU():
     x1,y1为初始点坐标,content为内容
     遇到回车符自动换行，遇到边缘换行，一页满了自动清屏，2,2开始继续显示
     '''
-    def display_text_on_screen(content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
+    def display_text_on_screen(self, content, color, start_x=2, start_y=2, font_size=20, screen_width=320, screen_height=240):
         # 计算每行可显示字符的数量和行数
         char_width = font_size +1  #// 2
         chars_per_line = screen_width // char_width
