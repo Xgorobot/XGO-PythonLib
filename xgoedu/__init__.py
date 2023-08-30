@@ -290,11 +290,11 @@ class XGOEDU():
                         current_y = start_y + current_line * char_width # font_size
                         current_line +=1
                        
-                        lcd_text(current_x, current_y, char, color, font_size)
+                        self.lcd_text(current_x, current_y, char, color, font_size)
                         current_char += 1
                         break  # continue
     
-                    lcd_text(current_x, current_y, char, color, font_size)
+                    self.lcd_text(current_x, current_y, char, color, font_size)
                     current_x += char_width
                     current_char += 1
     
