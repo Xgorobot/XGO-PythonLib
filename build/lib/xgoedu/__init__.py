@@ -17,7 +17,7 @@ import threading
 
 
 __versinon__ = '1.3.5'
-__last_modified__ = '2023/9/4
+__last_modified__ = '2023/9/4'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
