@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.4'
-__last_modified__ = '2023/8/22'
+__versinon__ = '1.3.5'
+__last_modified__ = '2023/9/4
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -179,7 +179,7 @@ class XGOEDU():
     '''
     x1,y1,x2,y2为定义给定边框的两个点,angle0为初始角度,angle1为终止角度
     '''
-    def lcd_arc(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
+    def lcd_circle(self,x1,y1,x2,y2,angle0,angle1,color="WHITE",width=2):
         self.draw.arc((x1,y1,x2,y2),angle0,angle1,fill=color ,width=width)
         self.display.ShowImage(self.splash)
 
@@ -189,7 +189,7 @@ class XGOEDU():
     radius 圆半径长度 mm
     
     '''
-    def lcd_circle(self,center_x, center_y, radius, color, width=2):
+    def lcd_round(self,center_x, center_y, radius, color, width=2):
         # Calculate the bounding box for the circle
         x1 = center_x - radius
         y1 = center_y - radius
@@ -197,7 +197,7 @@ class XGOEDU():
         y2 = center_y + radius
     
         # Call lcd_circle() function to draw the circle
-        self.lcd_arc(x1, y1, x2, y2, 0, 360, color=color, width=width)
+        self.lcd_circle(x1, y1, x2, y2, 0, 360, color=color, width=width)
   
 
     

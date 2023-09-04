@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: xgo-pythonlib
-Version: 0.2.8
+Version: 0.2.9
 Summary: PythonLib for XGO2-DOG
 Home-page: https://github.com/Xgorobot/XGO-PythonLib
 Author: luwudynamics
@@ -57,8 +57,13 @@ dog = XGO('xgomini')
 dog.action(1)
 ```
 
-
 ## Change Log
+
+### [0.2.8] - 2023-08-22
+
+#### Fixed
+
+- Methods: display_text_on_screen()
 
 ### [0.2.7] - 2023-08-20
 
