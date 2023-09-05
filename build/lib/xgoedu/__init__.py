@@ -16,8 +16,8 @@ import threading
 # import _thread  使用_thread会报错，坑！
 
 
-__versinon__ = '1.3.5'
-__last_modified__ = '2023/9/4'
+__versinon__ = '1.3.6'
+__last_modified__ = '2023/9/5'
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -630,10 +630,10 @@ class XGOEDU():
             success,image = self.cap.read()
         else:
             image=np.array(Image.open(target))
+        image = cv2.flip(image,1)
         datas = self.hand.run(image)
         b,g,r = cv2.split(image)
         image = cv2.merge((r,g,b))
-        #image = cv2.flip(image,1)
         for data in datas:
             rect = data['rect']
             right_left = data['right_left']
