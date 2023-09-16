@@ -41,6 +41,13 @@ dog.action(1)
 
 ## Change Log
 
+### [0.3.1] - 2023-09-16
+
+#### Fixed
+
+- Add .gitignore
+- Gesture image flip
+
 ### [0.2.8] - 2023-08-22
 
 #### Fixed
