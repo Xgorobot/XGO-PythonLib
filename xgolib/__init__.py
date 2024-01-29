@@ -2,8 +2,9 @@ import serial
 import struct
 import time
 import math
-__version__ = '1.3.4'
-__last_modified__ = '2023/7/19'
+
+__version__ = '1.3.9'
+__last_modified__ = '2023/12/26'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -15,7 +16,7 @@ XGOorder = {
     "PERFORM": [0x03, 0],
     "CALIBRATION": [0x04, 0],
     "UPGRADE": [0x05, 0],
-    "MOVE_TEST": [0x06, 1],
+    "SET_ORIGIN": [0x06, 1],
     "FIRMWARE_VERSION": [0x07],
     "GAIT_TYPE": [0x09, 0x00],
     "BT_NAME": [0x13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -30,26 +31,42 @@ XGOorder = {
     "MarkTime": [0x3C, 0],
     "MOVE_MODE": [0x3D, 0],
     "ACTION": [0x3E, 0],
+    "MOVE_TO": [0x3F, 0, 0],
     "PERIODIC_TRAN": [0x80, 0, 0, 0],
     "MOTOR_ANGLE": [0x50, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128],
     "MOTOR_SPEED": [0x5C, 1],
+    "MOVE_TO_MID": [0x5F, 1],
     "LEG_POS": [0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     "IMU": [0x61, 0],
     "ROLL": [0x62, 0],
     "PITCH": [0x63, 0],
+    "TEACH_RECORD": [0x21, 0],
+    "TEACH_PLAY": [0x22, 0],
+    "TEACH_ARM_RECORD": [0x23, 0],
+    "TEACH_ARM_PLAY": [0x24, 0],
     "YAW": [0x64, 0],
-    "3V3": [0x66, 1],
     "CLAW": [0x71, 0],
     "ARM_MODE": [0x72, 0],
     "ARM_X": [0x73, 0],
-    "ARM_Z": [0x74, 0]
+    "ARM_Z": [0x74, 0],
+    "ARM_SPEED": [0x75, 0],
+    "ARM_THETA": [0x76, 0],
+    "ARM_R": [0x77, 0],
+    "OUTPUT_5V": [0x90, 0],
+    "OUTPUT_DIGITAL": [0x91, 0]
+}
+ActionTime = {
+    1: 3, 2: 3, 3: 5, 4: 5, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4, 10: 7,
+    11: 7, 12: 5, 13: 7, 14: 10, 15: 6, 16: 6, 17: 4, 18: 6, 19: 10, 20: 9,
+    21: 8, 22: 7, 23: 6, 24: 7, 128: 10, 129: 10, 130: 10, 255: 1
 }
 
 """
 XGOparam 用来存放机器狗的参数限制范围
 Xgoparam is used to store the parameter limit range of the robot dog
 """
-XGOparam={}
+XGOparam = {}
+
 
 def search(data, list):
     for i in range(len(list)):
@@ -88,7 +105,13 @@ def Byte2Float(rawdata):
     a.append(rawdata[1])
     a.append(rawdata[0])
     return struct.unpack("!f", a)[0]
-    pass
+
+
+def Byte2Short(rawdata):
+    a = bytearray()
+    a.append(rawdata[0])
+    a.append(rawdata[1])
+    return struct.unpack('>h', a)[0]
 
 
 def changePara(version):
@@ -104,20 +127,20 @@ def changePara(version):
             "VX_LIMIT": 25,  # X速度范围
             "VY_LIMIT": 18,  # Y速度范围
             "VYAW_LIMIT": 100,  # 旋转速度范围
-            "ARM_LIMIT": [[-80, 155], [-95, 155]]
+            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]]
         }
     elif version == 'xgolite':
         XGOparam = {
             "TRANSLATION_LIMIT": [25, 18, [60, 110]],
             "ATTITUDE_LIMIT": [20, 10, 12],
             "LEG_LIMIT": [25, 18, [60, 110]],
-            "MOTOR_LIMIT": [[-70, 50], [-70, 90], [-30, 30], [-65, 65], [-70, 60], [-90, 105]],
+            "MOTOR_LIMIT": [[-70, 50], [-70, 90], [-30, 30], [-65, 65], [-115, 70], [-85, 100]],
             "PERIOD_LIMIT": [[1.5, 8]],
             "MARK_TIME_LIMIT": [10, 25],
             "VX_LIMIT": 25,
             "VY_LIMIT": 18,
             "VYAW_LIMIT": 100,
-            "ARM_LIMIT": [[-80, 155], [-95, 155]]
+            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]]
         }
 
 
@@ -128,9 +151,9 @@ class XGO():
     communication interface between the upper computer and the machine dog
     """
 
-    def __init__(self, port, baud=115200,version="xgomini", verbose=False):
+    def __init__(self, port, baud=115200, version="xgomini", verbose=False):
         self.verbose = verbose
-        self.ser = serial.Serial("/dev/ttyAMA0", baud, timeout=0.5)
+        self.ser = serial.Serial(port, baud, timeout=0.5)
         self.ser.flushOutput()
         self.ser.flushInput()
         self.port = port
@@ -151,7 +174,7 @@ class XGO():
         self.mintime = 0.65
         self.reset()
         self.init_yaw = self.read_yaw()
-        time.sleep(1.25)
+        time.sleep(1)
         pass
 
     def __send(self, key, index=1, len=1):
@@ -201,17 +224,29 @@ class XGO():
         else:
             print("ERROR!Invalid direction!")
 
-    def move_x(self, step):
+    def move_x(self, step, runtime=0):
         XGOorder["VX"][1] = conver2u8(step, XGOparam["VX_LIMIT"])
         self.__send("VX")
+        if runtime:
+            time.sleep(runtime)
+            XGOorder["VX"][1] = conver2u8(0, XGOparam["VX_LIMIT"])
+            self.__send("VX")
 
-    def move_y(self, step):
+    def move_y(self, step, runtime=0):
         XGOorder["VY"][1] = conver2u8(step, XGOparam["VY_LIMIT"])
         self.__send("VY")
+        if runtime:
+            time.sleep(runtime)
+            XGOorder["VY"][1] = conver2u8(0, XGOparam["VY_LIMIT"])
+            self.__send("VY")
 
-    def turn(self, step):
+    def turn(self, step, runtime=0):
         XGOorder["VYAW"][1] = conver2u8(step, XGOparam["VYAW_LIMIT"])
         self.__send("VYAW")
+        if runtime:
+            time.sleep(runtime)
+            XGOorder["VYAW"][1] = conver2u8(0, XGOparam["VYAW_LIMIT"])
+            self.__send("VYAW")
 
     def forward(self, step):
         self.move_x(abs(step))
@@ -254,7 +289,6 @@ class XGO():
         time.sleep(runtime)
         self.turn(0)
         pass
-
 
     def turn_to(self, theta, vyaw=60, emax=10):
         cur_yaw = self.read_yaw()
@@ -310,7 +344,7 @@ class XGO():
         else:
             self.__attitude(direction, data)
 
-    def action(self, action_id):
+    def action(self, action_id, wait=False):
         """
         使机器狗狗指定的预设动作
         Make the robot do the specified preset action
@@ -320,8 +354,10 @@ class XGO():
             return
         XGOorder["ACTION"][1] = action_id
         self.__send("ACTION")
-
-    pass
+        if wait:
+            st = ActionTime.get(action_id)
+            if st:
+                time.sleep(st)
 
     def reset(self):
         """
@@ -329,7 +365,7 @@ class XGO():
         The robot dog stops moving and all parameters return to the initial state
         """
         self.action(255)
-        time.sleep(0.75)
+        time.sleep(1)
 
     def leg(self, leg_id, data):
         """
@@ -355,7 +391,7 @@ class XGO():
 
     def __motor(self, index, data):
         if index < 13:
-            XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][index % 3 - 1])
+            XGOorder["MOTOR_ANGLE"][index] = conver2u8(data, XGOparam["MOTOR_LIMIT"][(index - 1) % 3])
         elif index == 13:
             self.claw(conver2u8(data, XGOparam["MOTOR_LIMIT"][3]))
             return
@@ -481,6 +517,8 @@ class XGO():
             value = 0x01
         elif mode == "high":
             value = 0x02
+        elif mode == "slow_trot":
+            value = 0x03
         else:
             print("ERROR!Illegal Value!")
             return
@@ -746,6 +784,22 @@ class XGO():
         self.__send("ARM_X")
         self.__send("ARM_Z")
 
+    def arm_polar(self, arm_theta, arm_r):
+        """
+        控制机器狗的机械臂的前后和上下移动
+        Control the movement of the arm of the robot
+        """
+        try:
+            arm_theta_u8 = conver2u8(arm_theta, XGOparam["ARM_LIMIT"][2])
+            arm_r_u8 = conver2u8(arm_r, XGOparam["ARM_LIMIT"][3])
+        except:
+            print("Error!Illegal Value!")
+            return
+        XGOorder["ARM_THETA"][1] = arm_theta_u8
+        XGOorder["ARM_R"][1] = arm_r_u8
+        self.__send("ARM_THETA")
+        self.__send("ARM_R")
+
     def arm_mode(self, mode):
         if mode != 0x01 and mode != 0x00:
             print("Error!Illegal Value!")
@@ -785,4 +839,96 @@ class XGO():
                 XGOorder["BT_NAME"].append(ord(c))
         print(XGOorder["BT_NAME"])
         self.__send("BT_NAME", len=length)
+
+    def moveToMid(self):
+        self.__send("MOVE_TO_MID")
+
+    def teach(self, mode, pos_id):
+        if mode == "play":
+            XGOorder["TEACH_PLAY"][1] = pos_id
+            self.__send("TEACH_PLAY")
+        if mode == "record":
+            XGOorder["TEACH_RECORD"][1] = pos_id
+            self.__send("TEACH_RECORD")
+        else:
+            return
+
+    def teach_arm(self, mode, pos_id):
+        if mode == "play":
+            XGOorder["TEACH_ARM_PLAY"][1] = pos_id
+            self.__send("TEACH_ARM_PLAY")
+        if mode == "record":
+            XGOorder["TEACH_ARM_RECORD"][1] = pos_id
+            self.__send("TEACH_ARM_RECORD")
+        else:
+            return
+
+    def arm_speed(self, speed):
+        if speed < 0 or speed > 255:
+            print("ERROR!Illegal Value!The speed parameter needs to be between 0 and 255!")
+            return
+        if speed == 0:
+            speed = 1
+        XGOorder["ARM_SPEED"][1] = speed
+        self.__send("ARM_SPEED")
+
+    def read_imu(self):
+        self.__read(0x65, 24)
+        result = []
+        if self.__unpack():
+            result = self.unpack_imu()
+        return result
+
+    def read_imu_int16(self, direction):
+        if direction == "roll":
+            self.__read(0x66, 2)
+        elif direction == "pitch":
+            self.__read(0x67, 2)
+        elif direction == "yaw":
+            self.__read(0x68, 2)
+        else:
+            return None
+        result = []
+        if self.__unpack():
+            result = Byte2Short(self.rx_data)
+        return result
+
+    def unpack_imu(self):
+        result = []
+        for i in range(9):
+            a = bytearray()
+            if i < 6:
+                a.append(self.rx_data[2 * i + 1])
+                a.append(self.rx_data[2 * i])
+                if i < 3:
+                    result.append(struct.unpack("!h", a)[0] / 16384 * 9.8)
+                else:
+                    result.append(struct.unpack("!h", a)[0] / 16.4)
+            else:
+                a.append(self.rx_data[4 * i - 9])
+                a.append(self.rx_data[4 * i - 10])
+                a.append(self.rx_data[4 * i - 11])
+                a.append(self.rx_data[4 * i - 12])
+                result.append(struct.unpack("!f", a)[0] / 180 * 3.14)
+        return result
+
+    def set_origin(self):
+        XGOorder["SET_ORIGIN"][1] = 1
+        self.__send("SET_ORIGIN")
+
+    def move_to(self, data):
+        packed_data = struct.pack('>h', data)
+        XGOorder["MOVE_TO"][1] = packed_data[0]
+        XGOorder["MOVE_TO"][2] = packed_data[1]
+        self.__send("MOVE_TO", len=2)
+
+    def output_5v(self, data):
+        XGOorder["OUTPUT_5V"][1] = data
+        self.__send("OUTPUT_5V")
+        pass
+
+    def output_digital(self, data):
+        XGOorder["OUTPUT_DIGITAL"][1] = data
+        self.__send("OUTPUT_DIGITAL")
+        pass
 

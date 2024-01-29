@@ -41,6 +41,12 @@ dog.action(1)
 
 ## Change Log
 
+### [0.3.2] - 2024-01-29
+
+#### Fixed
+
+- Update xgolib.py to 1.3.9
+
 ### [0.3.1] - 2023-09-16
 
 #### Fixed
