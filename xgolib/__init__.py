@@ -3,8 +3,8 @@ import struct
 import time
 import math
 
-__version__ = '1.3.9'
-__last_modified__ = '2023/12/26'
+__version__ = '1.4.1'
+__last_modified__ = '2024/2/18'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -52,13 +52,9 @@ XGOorder = {
     "ARM_SPEED": [0x75, 0],
     "ARM_THETA": [0x76, 0],
     "ARM_R": [0x77, 0],
-    "OUTPUT_5V": [0x90, 0],
-    "OUTPUT_DIGITAL": [0x91, 0]
-}
-ActionTime = {
-    1: 3, 2: 3, 3: 5, 4: 5, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4, 10: 7,
-    11: 7, 12: 5, 13: 7, 14: 10, 15: 6, 16: 6, 17: 4, 18: 6, 19: 10, 20: 9,
-    21: 8, 22: 7, 23: 6, 24: 7, 128: 10, 129: 10, 130: 10, 255: 1
+    "OUTPUT_ANALOG": [0x90, 0],
+    "OUTPUT_DIGITAL": [0x91, 0],
+    "LED_COLOR": [0x69, 0, 0, 0]
 }
 
 """
@@ -127,7 +123,11 @@ def changePara(version):
             "VX_LIMIT": 25,  # X速度范围
             "VY_LIMIT": 18,  # Y速度范围
             "VYAW_LIMIT": 100,  # 旋转速度范围
-            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]]
+            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]],
+            "ActionTime": {
+                1: 3, 2: 3, 3: 5, 4: 5, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4, 10: 7,
+                11: 7, 12: 5, 13: 7, 14: 10, 15: 6, 16: 6, 17: 4, 18: 6, 19: 10, 20: 9,
+                21: 8, 22: 7, 23: 6, 24: 7, 128: 10, 129: 10, 130: 10, 255: 1}
         }
     elif version == 'xgolite':
         XGOparam = {
@@ -140,7 +140,28 @@ def changePara(version):
             "VX_LIMIT": 25,
             "VY_LIMIT": 18,
             "VYAW_LIMIT": 100,
-            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]]
+            "ARM_LIMIT": [[-80, 155], [-95, 155], [70, 270], [80, 140]],
+            "ActionTime": {
+                1: 3, 2: 3, 3: 5, 4: 5, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4, 10: 7,
+                11: 7, 12: 5, 13: 7, 14: 10, 15: 6, 16: 6, 17: 4, 18: 6, 19: 10, 20: 9,
+                21: 8, 22: 7, 23: 6, 24: 7, 128: 10, 129: 10, 130: 10, 255: 1}
+        }
+    elif version == "xgorider":
+        XGOparam = {
+            "TRANSLATION_LIMIT": [1, 1, [60, 120]],
+            "ATTITUDE_LIMIT": [17, 1, 1],
+            "LEG_LIMIT": [1, 1, [60, 120]],
+            "MOTOR_LIMIT": [[-1, 1], [-1, 1], [-1, 1], [-1, 1], [-1, 1], [-1, 1]],
+            "PERIOD_LIMIT": [[1, 2]],
+            "MARK_TIME_LIMIT": [-1, 1],
+            "VX_LIMIT": 1.5,
+            "VY_LIMIT": 1.0,
+            "VYAW_LIMIT": 360,
+            "ARM_LIMIT": [[-1, 1], [-1, 1], [-1, 1], [-1, 1]],
+            "ActionTime": {
+                1: 3, 2: 3, 3: 5, 4: 5, 5: 4, 6: 4, 7: 4, 8: 4, 9: 4, 10: 7,
+                11: 7, 12: 5, 13: 7, 14: 10, 15: 6, 16: 6, 17: 4, 18: 6, 19: 10, 20: 9,
+                21: 8, 22: 7, 23: 6, 24: 7, 128: 10, 129: 10, 130: 10, 255: 1}
         }
 
 
@@ -517,8 +538,6 @@ class XGO():
             value = 0x01
         elif mode == "high":
             value = 0x02
-        elif mode == "slow_trot":
-            value = 0x03
         else:
             print("ERROR!Illegal Value!")
             return
@@ -532,6 +551,8 @@ class XGO():
             value = 0x01
         elif mode == "high_walk":
             value = 0x02
+        elif mode == "slow_trot":
+            value = 0x03
         XGOorder["GAIT_TYPE"][1] = value
         self.__send("GAIT_TYPE")
 
@@ -719,9 +740,6 @@ class XGO():
         self.mintime = mintime
 
     def upgrade(self, filename):
-        """
-        处于测试阶段，请勿使用
-        """
         XGOorder["UPGRADE"][1] = 1
         self.ser.flush()
         self.__send("UPGRADE")
@@ -922,13 +940,160 @@ class XGO():
         XGOorder["MOVE_TO"][2] = packed_data[1]
         self.__send("MOVE_TO", len=2)
 
-    def output_5v(self, data):
-        XGOorder["OUTPUT_5V"][1] = data
-        self.__send("OUTPUT_5V")
+    def output_analog(self, data):
+        XGOorder["OUTPUT_ANALOG"][1] = data
+        self.__send("OUTPUT_ANALOG")
         pass
 
     def output_digital(self, data):
         XGOorder["OUTPUT_DIGITAL"][1] = data
         self.__send("OUTPUT_DIGITAL")
         pass
+
+    ############# RIDER ################
+
+    def rider_move_x(self, speed, runtime=0):
+        XGOorder["VX"][1] = conver2u8(speed, XGOparam["VX_LIMIT"])
+        self.__send("VX")
+        if runtime:
+            time.sleep(runtime)
+            XGOorder["VX"][1] = conver2u8(0, XGOparam["VX_LIMIT"])
+            self.__send("VX")
+
+    def rider_turn(self, speed, runtime=0):
+        XGOorder["VYAW"][1] = conver2u8(speed, XGOparam["VYAW_LIMIT"])
+        self.__send("VYAW")
+        if runtime:
+            time.sleep(runtime)
+            XGOorder["VYAW"][1] = conver2u8(0, XGOparam["VYAW_LIMIT"])
+            self.__send("VYAW")
+
+    def rider_reset_odom(self):
+        XGOorder["SET_ORIGIN"][1] = 1
+        self.__send("SET_ORIGIN")
+
+    def rider_action(self, action_id, wait=False):
+        if action_id <= 0 or action_id > 255:
+            print("ERROR!Illegal Action ID!")
+            return
+        XGOorder["ACTION"][1] = action_id
+        self.__send("ACTION")
+        if wait:
+            st = XGOparam["ActionTime"].get(action_id)
+            if st:
+                time.sleep(st)
+
+    def rider_balance_roll(self, mode):
+        if mode != 0 and mode != 1:
+            print("ERROR!Illegal Value!")
+            return
+        XGOorder["IMU"][1] = mode
+        self.__send("IMU")
+
+    def rider_perform(self, mode):
+        if mode != 0 and mode != 1:
+            print("ERROR!Illegal Value!")
+            return
+        XGOorder["PERFORM"][1] = mode
+        self.__send("PERFORM")
+
+    def rider_calibration(self, state):
+        """
+        用于软件标定，请谨慎使用！！！
+        """
+        if state == 'start':
+            XGOorder["CALIBRATION"][1] = 1
+        elif state == 'end':
+            XGOorder["CALIBRATION"][1] = 0
+        else:
+            print("ERROR!")
+        self.__send("CALIBRATION")
+        return
+
+    def rider_height(self, data):
+        self.__translation("z", data)
+
+    def rider_roll(self, data):
+        self.__attitude("r", data)
+
+    def rider_periodic_roll(self, period):
+        self.__periodic_rot("r", period)
+
+    def rider_periodic_z(self, period):
+        self.__periodic_tran("z", period)
+
+    def rider_read_battery(self):
+        self.__read(XGOorder["BATTERY"][0], 1)
+        battery = 0
+        if self.__unpack():
+            battery = int(self.rx_data[0])
+        return battery
+
+    def rider_read_firmware(self):
+        self.__read(XGOorder["FIRMWARE_VERSION"][0], 10)
+        firmware_version = 'Null'
+        if self.__unpack():
+            data = self.rx_data[0:10]
+            try:
+                firmware_version = data.decode("ascii").strip('\0')
+            except Exception as e:
+                print(e)
+        return firmware_version
+
+    def rider_read_roll(self):
+        self.__read(XGOorder["ROLL"][0], 4)
+        roll = 0
+        if self.__unpack():
+            roll = Byte2Float(self.rx_data)
+        return round(roll, 2)
+
+    def rider_read_pitch(self):
+        self.__read(XGOorder["PITCH"][0], 4)
+        pitch = 0
+        if self.__unpack():
+            pitch = Byte2Float(self.rx_data)
+        return round(pitch, 2)
+
+    def rider_read_yaw(self):
+        self.__read(XGOorder["YAW"][0], 4)
+        yaw = 0
+        if self.__unpack():
+            yaw = Byte2Float(self.rx_data)
+        return round(yaw, 2)
+
+    def rider_read_imu_int16(self, direction):
+        if direction == "roll":
+            self.__read(0x66, 2)
+        elif direction == "pitch":
+            self.__read(0x67, 2)
+        elif direction == "yaw":
+            self.__read(0x68, 2)
+        else:
+            return None
+        result = []
+        if self.__unpack():
+            result = Byte2Short(self.rx_data)
+        return result
+
+    def rider_reset(self):
+        return self.reset()
+
+    def rider_upgrade(self, filename):
+        XGOorder["UPGRADE"][1] = 1
+        self.ser.flush()
+        self.__send("UPGRADE")
+        if self.__unpack(10):
+            if self.rx_data[0] == 0x55:
+                time.sleep(1)
+                print("Start!")
+                self.__send_bin(filename)
+            else:
+                print("Upgrade Response Error!")
+        else:
+            print("Upgrade Timeout!")
+
+    def rider_led(self, index, color):
+        XGOorder["LED_COLOR"][0] = 0x68 + index
+        XGOorder["LED_COLOR"][1:4] = color
+        self.__send("LED_COLOR", len=3)
 
