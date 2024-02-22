@@ -174,7 +174,7 @@ class XGO():
 
     def __init__(self, port, baud=115200, version="xgomini", verbose=False):
         self.verbose = verbose
-        self.ser = serial.Serial(port, baud, timeout=0.5)
+        self.ser = serial.Serial("/dev/ttyAMA0", baud, timeout=0.5)
         self.ser.flushOutput()
         self.ser.flushInput()
         self.port = port
