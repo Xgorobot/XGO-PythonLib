@@ -38,6 +38,13 @@ from xgolib import XGO
 dog = XGO('xgomini')
 dog.action(1)
 ```
+## Change Log
+
+### [0.3.4] - 2024-02-23
+
+#### Fixed
+- Update xgolib.py to 1.4.1
+- Added xgo-rider instruction set and related motion functions
 
 ## Change Log
 
