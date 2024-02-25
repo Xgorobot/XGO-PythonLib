@@ -3,8 +3,8 @@ import struct
 import time
 import math
 
-__version__ = '1.4.1'
-__last_modified__ = '2024/2/18'
+__version__ = '1.4.2'
+__last_modified__ = '2024/2/25'
 
 """
 XGOorder 用来存放命令地址和对应数据
@@ -189,6 +189,8 @@ class XGO():
             changePara('xgomini')
         elif self.version[0] == 'L':
             changePara('xgolite')
+        elif self.version[0] == 'R':
+            changePara('xgorider')
         else:
             changePara('xgomini')
             print("ERROR!Can't read firmware version!")
