@@ -40,7 +40,7 @@ dog.action(1)
 ```
 ## Change Log
 
-### [0.3.4] - 2024-02-23
+### [0.3.5] - 2024-02-23
 
 #### Fixed
 - Update xgolib.py to 1.4.1
