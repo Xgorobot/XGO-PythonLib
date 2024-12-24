@@ -1,39 +1,69 @@
-
 import time
 import xgoscreen.lcdconfig as lcdconfig
 
 class LCD_2inch(lcdconfig.RaspberryPi):
+    """
+    This class provides a high-level interface for controlling a 2-inch LCD display using the Raspberry Pi. 
+    It inherits from the `lcdconfig.RaspberryPi` class to manage low-level hardware interactions.
+
+    Attributes:
+        width (int): The width of the LCD display in pixels (240).
+        height (int): The height of the LCD display in pixels (320).
+    """
 
     width = 240
-    height = 320 
+    height = 320
+
     def command(self, cmd):
+        """
+        Sends a command to the LCD controller.
+
+        Parameters:
+            cmd (int): The command byte to send.
+        """
         self.digital_write(self.DC_PIN, self.GPIO.LOW)
         self.spi_writebyte([cmd])
 
     def data(self, val):
+        """
+        Sends a data byte to the LCD controller.
+
+        Parameters:
+            val (int): The data byte to send.
+        """
         self.digital_write(self.DC_PIN, self.GPIO.HIGH)
         self.spi_writebyte([val])
+
     def reset(self):
-        """Reset the display"""
-        self.GPIO.output(self.RST_PIN,self.GPIO.HIGH)
+        """
+        Resets the LCD display.
+        """
+        self.GPIO.output(self.RST_PIN, self.GPIO.HIGH)
         time.sleep(0.01)
-        self.GPIO.output(self.RST_PIN,self.GPIO.LOW)
+        self.GPIO.output(self.RST_PIN, self.GPIO.LOW)
         time.sleep(0.01)
-        self.GPIO.output(self.RST_PIN,self.GPIO.HIGH)
+        self.GPIO.output(self.RST_PIN, self.GPIO.HIGH)
         time.sleep(0.01)
-        
+
     def Init(self):
-        """Initialize dispaly"""  
+        """
+        Initializes the LCD display.
+
+        This method performs the following steps:
+        1. Initializes the Raspberry Pi module using `module_init()`.
+        2. Resets the LCD display using `reset()`.
+        3. Sends a sequence of commands and data bytes to configure the display controller.
+        """
         self.module_init()
         self.reset()
 
         self.command(0x36)
-        self.data(0x00) 
+        self.data(0x00)
 
-        self.command(0x3A) 
+        self.command(0x3A)
         self.data(0x05)
 
-        self.command(0x21) 
+        self.command(0x21)
 
         self.command(0x2A)
         self.data(0x00)
@@ -55,7 +85,7 @@ class LCD_2inch(lcdconfig.RaspberryPi):
         self.data(0x33)
 
         self.command(0xB7)
-        self.data(0x35) 
+        self.data(0x35)
 
         self.command(0xBB)
         self.data(0x1F)
@@ -67,13 +97,13 @@ class LCD_2inch(lcdconfig.RaspberryPi):
         self.data(0x01)
 
         self.command(0xC3)
-        self.data(0x12)   
+        self.data(0x12)
 
         self.command(0xC4)
         self.data(0x20)
 
         self.command(0xC6)
-        self.data(0x0F) 
+        self.data(0x0F)
 
         self.command(0xD0)
         self.data(0xA4)
@@ -116,64 +146,84 @@ class LCD_2inch(lcdconfig.RaspberryPi):
 
         self.command(0x29)
 
-  
     def SetWindows(self, Xstart, Ystart, Xend, Yend):
-        #set the X coordinates
+        """
+        Sets the active window area on the LCD display.
+
+        Parameters:
+            Xstart (int): The starting X-coordinate of the window.
+            Ystart (int): The starting Y-coordinate of the window.
+            Xend (int): The ending X-coordinate of the window.
+            Yend (int): The ending Y-coordinate of the window.
+        """
+        # set the X coordinates
         self.command(0x2A)
-        self.data(Xstart>>8)        #Set the horizontal starting point to the high octet
-        self.data(Xstart & 0xff)    #Set the horizontal starting point to the low octet
-        self.data(Xend>>8)          #Set the horizontal end to the high octet
-        self.data((Xend - 1) & 0xff)#Set the horizontal end to the low octet 
+        self.data(Xstart >> 8)  # Set the horizontal starting point to the high octet
+        self.data(Xstart & 0xff)  # Set the horizontal starting point to the low octet
+        self.data(Xend >> 8)  # Set the horizontal end to the high octet
+        self.data((Xend - 1) & 0xff)  # Set the horizontal end to the low octet
 
-        #set the Y coordinates
+        # set the Y coordinates
         self.command(0x2B)
-        self.data(Ystart>>8)
+        self.data(Ystart >> 8)
         self.data((Ystart & 0xff))
-        self.data(Yend>>8)
-        self.data((Yend - 1) & 0xff )
+        self.data(Yend >> 8)
+        self.data((Yend - 1) & 0xff)
 
-        self.command(0x2C)    
-        
-    def ShowImage(self,Image,Xstart=0,Ystart=0):
+        self.command(0x2C)
+
+    def ShowImage(self, Image, Xstart=0, Ystart=0):
+        """
+        Displays a PIL (Pillow) Image on the LCD.
+
+        Parameters:
+            Image (PIL.Image.Image): The image to display.
+            Xstart (int, optional): The starting X-coordinate for displaying the image. Defaults to 0.
+            Ystart (int, optional): The starting Y-coordinate for displaying the image. Defaults to 0.
+        """
         """Set buffer to value of Python Imaging Library image."""
         """Write display buffer to physical display"""
         imwidth, imheight = Image.size
-        if imwidth == self.height and imheight ==  self.width:
+        if imwidth == self.height and imheight == self.width:
             img = self.np.asarray(Image)
-            pix = self.np.zeros((self.width, self.height,2), dtype = self.np.uint8)
-            #RGB888 >> RGB565
-            pix[...,[0]] = self.np.add(self.np.bitwise_and(img[...,[0]],0xF8),self.np.right_shift(img[...,[1]],5))
-            pix[...,[1]] = self.np.add(self.np.bitwise_and(self.np.left_shift(img[...,[1]],3),0xE0), self.np.right_shift(img[...,[2]],3))
+            pix = self.np.zeros((self.width, self.height, 2), dtype=self.np.uint8)
+            # RGB888 >> RGB565
+            pix[..., [0]] = self.np.add(self.np.bitwise_and(img[..., [0]], 0xF8), self.np.right_shift(img[..., [1]], 5))
+            pix[..., [1]] = self.np.add(self.np.bitwise_and(self.np.left_shift(img[..., [1]], 3), 0xE0),
+                                        self.np.right_shift(img[..., [2]], 3))
             pix = pix.flatten().tolist()
-            
+
             self.command(0x36)
-            self.data(0x70) 
-            self.SetWindows ( 0, 0, self.height,self.width)
-            self.digital_write(self.DC_PIN,self.GPIO.HIGH)
-            for i in range(0,len(pix),4096):
-                self.spi_writebyte(pix[i:i+4096])
-            
-        else :
+            self.data(0x70)
+            self.SetWindows(0, 0, self.height, self.width)
+            self.digital_write(self.DC_PIN, self.GPIO.HIGH)
+            for i in range(0, len(pix), 4096):
+                self.spi_writebyte(pix[i:i + 4096])
+
+        else:
             img = self.np.asarray(Image)
-            pix = self.np.zeros((imheight,imwidth , 2), dtype = self.np.uint8)
-            
-            pix[...,[0]] = self.np.add(self.np.bitwise_and(img[...,[0]],0xF8),self.np.right_shift(img[...,[1]],5))
-            pix[...,[1]] = self.np.add(self.np.bitwise_and(self.np.left_shift(img[...,[1]],3),0xE0), self.np.right_shift(img[...,[2]],3))
+            pix = self.np.zeros((imheight, imwidth, 2), dtype=self.np.uint8)
+
+            pix[..., [0]] = self.np.add(self.np.bitwise_and(img[..., [0]], 0xF8), self.np.right_shift(img[..., [1]], 5))
+            pix[..., [1]] = self.np.add(self.np.bitwise_and(self.np.left_shift(img[..., [1]], 3), 0xE0),
+                                        self.np.right_shift(img[..., [2]], 3))
 
             pix = pix.flatten().tolist()
-            
+
             self.command(0x36)
-            self.data(0x00) 
-            self.SetWindows ( 0, 0, self.width, self.height)
-            self.digital_write(self.DC_PIN,self.GPIO.HIGH)
-            for i in range(0,len(pix),4096):
-                self.spi_writebyte(pix[i:i+4096])		
-                
+            self.data(0x00)
+            self.SetWindows(0, 0, self.width, self.height)
+            self.digital_write(self.DC_PIN, self.GPIO.HIGH)
+            for i in range(0, len(pix), 4096):
+                self.spi_writebyte(pix[i:i + 4096])
+
     def clear(self):
+        """
+        Clears the LCD display by filling it with white color (0xff).
+        """
         """Clear contents of image buffer"""
-        _buffer = [0xff]*(self.width * self.height * 2)
-        self.SetWindows ( 0, 0, self.height, self.width)
-        self.digital_write(self.DC_PIN,self.GPIO.HIGH)
-        for i in range(0,len(_buffer),4096):
-            self.spi_writebyte(_buffer[i:i+4096])	
-        
+        _buffer = [0xff] * (self.width * self.height * 2)
+        self.SetWindows(0, 0, self.height, self.width)
+        self.digital_write(self.DC_PIN, self.GPIO.HIGH)
+        for i in range(0, len(_buffer), 4096):
+            self.spi_writebyte(_buffer[i:i + 4096])
