@@ -10,7 +10,6 @@ Adopted the new XGO-Dog motion library and graphical display library
 
 - Updated xgolib to work only with XGOMini and XGOLite in the XGO family
 - Removed the xgoedu library and related, will not maintain the xgoedu library related content in the future
-- Removed the xgoedu library and related, will not maintain the xgoedu library related content in the future
 
 ## 安装指南
 - If xgo-pythonlib 0.3.5 is already installed
