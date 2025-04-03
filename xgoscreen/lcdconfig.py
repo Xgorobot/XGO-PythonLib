@@ -50,8 +50,8 @@ class RaspberryPi:
         self.GPIO.setup(self.RST_PIN, self.GPIO.OUT)
         self.GPIO.setup(self.DC_PIN, self.GPIO.OUT)
         self.GPIO.setup(self.BL_PIN, self.GPIO.OUT)
-        self._pwm=self.GPIO.PWM(self.BL_PIN,self.BL_freq)
-        self._pwm.start(100)
+        #self._pwm=self.GPIO.PWM(self.BL_PIN,self.BL_freq)
+        #self._pwm.start(100)
         if self.SPI!=None :
             self.SPI.max_speed_hz = self.SPEED        
             self.SPI.mode = 0b00     
